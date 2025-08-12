@@ -31,7 +31,7 @@ export interface PerformanceData {
 export class GoogleSearchConsoleService {
   private readonly logger = new Logger(GoogleSearchConsoleService.name);
   private readonly searchconsole: any;
-  private readonly siteUrl: string;
+  private siteUrl: string;
 
   constructor(private configService: ConfigService) {
     const config = this.configService.config;
