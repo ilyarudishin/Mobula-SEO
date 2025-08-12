@@ -1,0 +1,307 @@
+import { Controller, Get } from '@nestjs/common';
+import { AppService } from './app.service';
+import { DataForSeoService } from './services/dataforseo.service';
+import { ClaudeService } from './services/claude.service';
+import { NotionService } from './services/notion.service';
+import { SerpService } from './services/serp.service';
+import { SlackService } from './services/slack.service';
+import { GoogleSearchConsoleService } from './services/google-search-console.service';
+import { RedditDiscoveryService } from './services/reddit-discovery.service';
+import { BlogDiscoveryService } from './services/blog-discovery.service';
+import { SocialListeningService } from './services/social-listening.service';
+
+@Controller()
+export class AppController {
+  constructor(
+    private readonly appService: AppService,
+    private readonly dataForSeoService: DataForSeoService,
+    private readonly claudeService: ClaudeService,
+    private readonly notionService: NotionService,
+    private readonly serpService: SerpService,
+    private readonly slackService: SlackService,
+    private readonly gscService: GoogleSearchConsoleService,
+    private readonly redditService: RedditDiscoveryService,
+    private readonly blogService: BlogDiscoveryService,
+    private readonly socialService: SocialListeningService,
+  ) {}
+
+  @Get()
+  getHello(): string {
+    return this.appService.getHello();
+  }
+
+  @Get('health')
+  getHealth() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'mobula-seo-agent',
+      version: '1.0.0'
+    };
+  }
+
+  @Get('test-dataforseo')
+  async testDataForSeo() {
+    try {
+      const isConnected = await this.dataForSeoService.testConnection();
+      if (isConnected) {
+        // Test getting keyword data for Mobula keywords
+        const testKeywords = ['blockchain API', 'crypto data API'];
+        const keywordData = await this.dataForSeoService.getKeywordData(testKeywords);
+        
+        return {
+          status: 'success',
+          connection: true,
+          testKeywords: keywordData
+        };
+      }
+      return {
+        status: 'failed',
+        connection: false,
+        error: 'Connection test failed'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        connection: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Get('test-claude-notion')
+  async testClaudeNotion() {
+    try {
+      // Test Claude content generation
+      const content = await this.claudeService.generateContent({
+        type: 'blog_article',
+        topic: 'blockchain API testing',
+        keywords: ['blockchain API', 'test'],
+        targetAudience: 'developers',
+        additionalContext: 'This is a test of the content generation system'
+      });
+
+      // Test Notion integration by saving the content
+      const pageId = await this.notionService.saveGeneratedContent(
+        content,
+        'blog_article',
+        85, // priority score
+        { test: true, timestamp: new Date().toISOString() }
+      );
+
+      return {
+        status: 'success',
+        claudeConnected: true,
+        notionConnected: true,
+        generatedContent: {
+          title: content.title,
+          wordCount: content.wordCount,
+          qualityScore: content.qualityScore
+        },
+        notionPageId: pageId
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
+  @Get('test-notion-simple')
+  async testNotionSimple() {
+    try {
+      // First, let's check the database schema to understand the exact property configuration
+      const databaseSchema = await this.notionService.getDatabaseSchema();
+      
+      return {
+        status: 'success',
+        databaseSchema: databaseSchema,
+        message: 'Database schema retrieved successfully'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
+  @Get('test-serpapi')
+  async testSerpApi() {
+    try {
+      const keyword = 'blockchain API';
+      const serpAnalysis = await this.serpService.analyzeSerpForKeyword(keyword);
+      
+      return {
+        status: 'success',
+        keyword: keyword,
+        totalResults: serpAnalysis.totalResults,
+        topResults: serpAnalysis.topResults.slice(0, 5),
+        peopleAlsoAsk: serpAnalysis.peopleAlsoAsk,
+        competitorPresence: serpAnalysis.competitorPresence,
+        message: 'SerpAPI connected and working'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
+  @Get('test-slack')
+  async testSlack() {
+    try {
+      await this.slackService.sendContentGeneratedAlert({
+        title: 'Test Content Generation',
+        type: 'blog_article',
+        qualityScore: 85,
+        wordCount: 1200,
+        notionPageId: '24d2083f-da3e-8198-862b-test123456789',
+      });
+      
+      return {
+        status: 'success',
+        message: 'Slack notification sent successfully'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
+  @Get('test-gsc')
+  async testGSC() {
+    try {
+      const connectionTest = await this.gscService.testConnection();
+      
+      if (connectionTest) {
+        // Get recent performance data
+        const topQueries = await this.gscService.getTopQueries(7, 10);
+        
+        return {
+          status: 'success',
+          connection: true,
+          topQueries: topQueries,
+          message: 'Google Search Console connected successfully'
+        };
+      } else {
+        return {
+          status: 'warning',
+          connection: false,
+          message: 'GSC connection successful but target domain not found or no permissions'
+        };
+      }
+    } catch (error) {
+      return {
+        status: 'error',
+        connection: false,
+        error: error.message
+      };
+    }
+  }
+
+  @Get('test-reddit')
+  async testReddit() {
+    try {
+      const newOpportunities = await this.redditService.getNewOpportunities();
+      const deduplicationStatus = this.redditService.getDeduplicationStatus();
+      
+      return {
+        status: 'success',
+        newOpportunitiesFound: newOpportunities.length,
+        deduplicationStatus,
+        topNewOpportunities: newOpportunities.slice(0, 5).map(opp => ({
+          title: opp.postTitle,
+          postUrl: opp.postUrl,
+          subreddit: opp.subreddit,
+          score: opp.opportunityScore,
+          keywords: opp.keywords,
+          postScore: opp.score,
+          comments: opp.commentCount,
+        })),
+        message: newOpportunities.length > 0 
+          ? `Found ${newOpportunities.length} new opportunities` 
+          : 'No new opportunities found (all previously seen)'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
+  @Get('test-blog-discovery')
+  async testBlogDiscovery() {
+    try {
+      const opportunities = await this.blogService.discoverOpportunities();
+      
+      return {
+        status: 'success',
+        opportunitiesFound: opportunities.length,
+        opportunitiesByType: {
+          broken_link: opportunities.filter(o => o.type === 'broken_link').length,
+          guest_post: opportunities.filter(o => o.type === 'guest_post').length,
+          resource_page: opportunities.filter(o => o.type === 'resource_page').length,
+        },
+        topOpportunities: opportunities.slice(0, 3).map(opp => ({
+          type: opp.type,
+          domain: opp.domain,
+          title: opp.title,
+          score: opp.opportunityScore,
+          description: opp.description,
+          keywords: opp.relevanceKeywords,
+        })),
+        message: 'Blog discovery working - found outreach opportunities'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
+  @Get('test-social-listening')
+  async testSocialListening() {
+    try {
+      const mentions = await this.socialService.listenForMentions();
+      
+      return {
+        status: 'success',
+        mentionsFound: mentions.length,
+        mentionsByPlatform: {
+          twitter: mentions.filter(m => m.platform === 'twitter').length,
+          hackernews: mentions.filter(m => m.platform === 'hackernews').length,
+          github: mentions.filter(m => m.platform === 'github').length,
+          linkedin: mentions.filter(m => m.platform === 'linkedin').length,
+        },
+        mentionsByType: {
+          question: mentions.filter(m => m.opportunityType === 'question').length,
+          complaint: mentions.filter(m => m.opportunityType === 'complaint').length,
+          mention: mentions.filter(m => m.opportunityType === 'mention').length,
+          tutorial_request: mentions.filter(m => m.opportunityType === 'tutorial_request').length,
+        },
+        topMentions: mentions.slice(0, 3).map(mention => ({
+          platform: mention.platform,
+          opportunityType: mention.opportunityType,
+          relevanceScore: mention.relevanceScore,
+          author: mention.author.username,
+          engagement: mention.engagement,
+          content: mention.content.substring(0, 100) + '...',
+          keywords: mention.targetKeywords,
+        })),
+        message: 'Social listening working - found mentions across platforms'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+}
