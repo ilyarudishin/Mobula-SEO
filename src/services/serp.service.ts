@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { ConfigService } from '../config/config.service';
+import { DataForSeoService } from './dataforseo.service';
 
 export interface SearchResult {
   position: number;
@@ -46,7 +47,10 @@ export class SerpService {
   private readonly targetDomain: string;
   private readonly competitors = ['alchemy.com', 'coingecko.com', 'moralis.io', 'covalenthq.com'];
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private dataForSeoService: DataForSeoService,
+  ) {
     const config = this.configService.config;
     this.apiKey = config.serpApi.key;
     this.targetDomain = config.app.targetDomain;
@@ -226,14 +230,34 @@ export class SerpService {
   }
 
   private async evaluateKeywordOpportunity(keyword: string, serpAnalysis: SerpAnalysis): Promise<KeywordOpportunity> {
-    // Analyze competition level
+    // Get real DataForSEO keyword data if available
+    let searchVolume = 1000; // Default fallback
+    let dataForSeoCompetition: 'low' | 'medium' | 'high' = 'medium';
+    let dataForSeoDifficulty = 50;
+
+    try {
+      const keywordData = await this.dataForSeoService.getKeywordData([keyword]);
+      if (keywordData.length > 0) {
+        const data = keywordData[0];
+        searchVolume = data.searchVolume;
+        dataForSeoCompetition = data.competitionLevel as 'low' | 'medium' | 'high';
+        dataForSeoDifficulty = data.difficulty;
+        this.logger.log(`DataForSEO data for "${keyword}": Volume=${searchVolume}, Competition=${dataForSeoCompetition}, Difficulty=${dataForSeoDifficulty}`);
+      }
+    } catch (error) {
+      this.logger.warn(`DataForSEO data unavailable for "${keyword}", using SERP analysis fallback`);
+    }
+
+    // Analyze SERP competition level
     const competitorCount = serpAnalysis.competitorPresence.length;
     const topCompetitorPosition = serpAnalysis.competitorPresence.length > 0 
       ? Math.min(...serpAnalysis.competitorPresence.map(c => c.position))
       : 11;
 
-    const competition = competitorCount > 3 ? 'high' : competitorCount > 1 ? 'medium' : 'low';
-    const difficulty = Math.min(100, (competitorCount * 15) + (topCompetitorPosition > 5 ? 0 : (6 - topCompetitorPosition) * 10));
+    // Combine SERP analysis with DataForSEO insights
+    const serpCompetition = competitorCount > 3 ? 'high' : competitorCount > 1 ? 'medium' : 'low';
+    const competition = this.combineCompetitionLevels(serpCompetition, dataForSeoCompetition);
+    const difficulty = Math.min(100, Math.max(dataForSeoDifficulty, (competitorCount * 15) + (topCompetitorPosition > 5 ? 0 : (6 - topCompetitorPosition) * 10)));
 
     // Determine search intent
     const intent = this.determineSearchIntent(keyword, serpAnalysis);
@@ -261,7 +285,7 @@ export class SerpService {
 
     return {
       keyword,
-      searchVolume: this.estimateSearchVolume(serpAnalysis.totalResults),
+      searchVolume, // Real data from DataForSEO
       competition,
       difficulty,
       intent,
@@ -389,6 +413,21 @@ export class SerpService {
       ],
       competitorPresence: [],
     };
+  }
+
+  private combineCompetitionLevels(
+    serpCompetition: 'low' | 'medium' | 'high',
+    dataForSeoCompetition: 'low' | 'medium' | 'high'
+  ): 'low' | 'medium' | 'high' {
+    // Use more conservative (higher) competition level
+    const competitionHierarchy = { low: 1, medium: 2, high: 3 };
+    const serpLevel = competitionHierarchy[serpCompetition];
+    const dataForSeoLevel = competitionHierarchy[dataForSeoCompetition];
+    
+    const maxLevel = Math.max(serpLevel, dataForSeoLevel);
+    return Object.keys(competitionHierarchy).find(
+      key => competitionHierarchy[key as keyof typeof competitionHierarchy] === maxLevel
+    ) as 'low' | 'medium' | 'high';
   }
 
   private sleep(ms: number): Promise<void> {
