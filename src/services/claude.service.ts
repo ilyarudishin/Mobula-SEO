@@ -167,33 +167,74 @@ Format your response as JSON with these fields:
   }
 
   private buildUserPrompt(request: ContentGenerationRequest): string {
-    return `Create ${request.type} content following Mobula's SEO-first guidelines:
+    const contentInstructions = this.getContentTypeSpecificInstructions(request.type);
+    
+    return `Write complete, finished, ready-to-publish ${request.type} content about: "${request.topic}"
 
-PRIMARY KEYWORD: ${request.keywords[0]}
-SECONDARY KEYWORDS: ${request.keywords.slice(1).join(', ')}
-TARGET AUDIENCE: ${request.targetAudience}
-TOPIC FOCUS: ${request.topic}
+TARGET KEYWORDS: ${request.keywords.join(', ')}
+AUDIENCE: ${request.targetAudience}
+${request.competitorAnalysis ? `COMPETITOR GAPS: ${request.competitorAnalysis}` : ''}
+${request.additionalContext ? `CONTEXT: ${request.additionalContext}` : ''}
 
-${request.competitorAnalysis ? `CONTENT GAPS TO FILL: ${request.competitorAnalysis}` : ''}
-${request.additionalContext ? `ADDITIONAL CONTEXT: ${request.additionalContext}` : ''}
+${contentInstructions}
 
-CRITICAL SUCCESS CRITERIA:
-✅ Would this rank without mentioning Mobula? (Must be YES)
-✅ Is this 3x better than top 3 current results?
-✅ Would a developer bookmark this for future reference?
-✅ Does it solve a real problem comprehensively?
-✅ Includes working code examples that actually work?
-✅ Natural keyword integration (1-2% density)?
-✅ Optimized for featured snippets?
+MOBULA INTEGRATION (if relevant):
+- Mention Mobula naturally at 70-80% through content as "one option"
+- Include specific code example with Mobula API
+- Always suggest alternatives alongside Mobula
+- No promotional language
 
-MOBULA INTEGRATION REQUIREMENTS:
-- Appear at 70-80% through content
-- Introduced as "one solution" among alternatives
-- Include specific technical implementation example
-- NO promotional language ("best", "revolutionary", etc.)
-- Provide alternative solutions alongside Mobula
+RESPONSE FORMAT:
+Return only valid JSON:
+{
+  "title": "SEO-optimized title with primary keyword",
+  "content": "Complete finished content ready to publish",
+  "metaDescription": "150-character description", 
+  "tags": ["keyword1", "keyword2", "keyword3"],
+  "qualityScore": 85,
+  "targetKeywords": ["primary", "secondary", "related"]
+}`;
+  }
 
-Remember: Content quality and developer value first, SEO optimization second, Mobula mention last.`;
+  private getContentTypeSpecificInstructions(type: string): string {
+    switch (type) {
+      case 'blog_article':
+        return `Write a 2000+ word comprehensive blog article:
+- Start with compelling hook and problem statement
+- Use H2/H3 structure for easy scanning  
+- Include 2-3 working code examples
+- Add comparison table if relevant
+- End with actionable next steps
+- Write as if for publication on Mobula's blog`;
+
+      case 'reddit_response':
+        return `Write a helpful Reddit comment response (300-500 words):
+- Address the specific question/problem directly
+- Provide practical, actionable advice
+- Include code examples or resources
+- Be authentic and community-focused
+- Suggest multiple solutions, not just Mobula
+- Write as if you're genuinely helping another developer`;
+
+      case 'outreach_email':
+        return `Write a professional outreach email (150-200 words):
+- Specific subject line
+- Reference their work/content specifically  
+- Lead with genuine value offer
+- Clear but low-pressure call-to-action
+- Professional but personal tone`;
+
+      case 'technical_guide':
+        return `Write an in-depth technical guide (2500+ words):
+- Include architecture overview
+- Step-by-step implementation
+- Performance considerations
+- Common pitfalls and solutions
+- Real-world examples and benchmarks`;
+
+      default:
+        return 'Write comprehensive, helpful content that solves real problems.';
+    }
   }
 
   private parseGeneratedContent(text: string, request: ContentGenerationRequest): GeneratedContent {
