@@ -36,12 +36,36 @@ export class GoogleSearchConsoleService {
   constructor(private configService: ConfigService) {
     const config = this.configService.config;
     
-    // Initialize Google API client
-    const auth = new google.auth.GoogleAuth({
-      keyFile: config.google?.applicationCredentials || './gsc-credentials.json',
+    // Initialize Google API client with flexible credential handling
+    let authConfig: any = {
       scopes: ['https://www.googleapis.com/auth/webmasters.readonly'],
-    });
+    };
 
+    // Try environment variable first (for Railway deployment)
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
+      try {
+        const credentialsJson = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64, 'base64').toString('utf8');
+        const credentials = JSON.parse(credentialsJson);
+        authConfig.credentials = credentials;
+        this.logger.log('Using base64-encoded Google credentials from environment');
+      } catch (error) {
+        this.logger.error('Failed to parse base64 Google credentials', error.message);
+      }
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.GOOGLE_APPLICATION_CREDENTIALS.startsWith('{')) {
+      try {
+        authConfig.credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+        this.logger.log('Using JSON Google credentials from environment');
+      } catch (error) {
+        this.logger.error('Failed to parse JSON Google credentials', error.message);
+      }
+    } else if (config.google?.applicationCredentials) {
+      authConfig.keyFile = config.google.applicationCredentials;
+      this.logger.log('Using Google credentials from file path');
+    } else {
+      this.logger.warn('No Google Search Console credentials found. GSC features will be disabled.');
+    }
+
+    const auth = new google.auth.GoogleAuth(authConfig);
     this.searchconsole = google.searchconsole({ version: 'v1', auth });
     this.siteUrl = `sc-domain:${config.app.targetDomain}`;
   }
@@ -53,13 +77,29 @@ export class GoogleSearchConsoleService {
       this.logger.log('Google Search Console connection successful');
       this.logger.log(`Available sites: ${sites.data.siteEntry?.map((site: any) => site.siteUrl).join(', ')}`);
       
-      // Check if our target site is available
-      const targetSite = sites.data.siteEntry?.find((site: any) => site.siteUrl === this.siteUrl);
+      // Check if our target site is available (try multiple formats)
+      const targetDomain = this.configService.config.app.targetDomain;
+      const possibleSiteUrls = [
+        `sc-domain:${targetDomain}`,
+        `https://${targetDomain}/`,
+        `http://${targetDomain}/`,
+        targetDomain
+      ];
+
+      const targetSite = sites.data.siteEntry?.find((site: any) => 
+        possibleSiteUrls.includes(site.siteUrl) || 
+        site.siteUrl.includes(targetDomain)
+      );
+
       if (targetSite) {
-        this.logger.log(`Target site ${this.siteUrl} found with permission level: ${targetSite.permissionLevel}`);
+        this.logger.log(`Target site found: ${targetSite.siteUrl} with permission level: ${targetSite.permissionLevel}`);
+        // Update siteUrl to match what's actually in Search Console
+        this.siteUrl = targetSite.siteUrl;
         return true;
       } else {
-        this.logger.warn(`Target site ${this.siteUrl} not found in Search Console. Make sure it's added and service account has access.`);
+        this.logger.warn(`Target domain ${targetDomain} not found in Search Console.`);
+        this.logger.warn(`Available sites: ${sites.data.siteEntry?.map((site: any) => site.siteUrl).join(', ') || 'None'}`);
+        this.logger.warn('Make sure mobula.io is added to Search Console and service account has access.');
         return false;
       }
     } catch (error) {
