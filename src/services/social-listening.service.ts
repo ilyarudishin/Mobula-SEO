@@ -6,6 +6,7 @@ import axios from 'axios';
 export interface SocialMention {
   id: string;
   platform: 'twitter' | 'hackernews' | 'github' | 'linkedin';
+  title: string;
   content: string;
   url: string;
   author: {
@@ -115,6 +116,7 @@ export class SocialListeningService {
           const mention: SocialMention = {
             id: `hn_${story.id}`,
             platform: 'hackernews',
+            title: story.title,
             content: story.title + (story.text ? ` - ${story.text.substring(0, 200)}...` : ''),
             url: `https://news.ycombinator.com/item?id=${story.id}`,
             author: {
@@ -188,6 +190,7 @@ export class SocialListeningService {
           const mention: SocialMention = {
             id: `gh_${issue.id}`,
             platform: 'github',
+            title: issue.title,
             content: `${issue.title} - ${issue.body?.substring(0, 200) || ''}...`,
             url: issue.html_url,
             author: {
@@ -285,6 +288,18 @@ export class SocialListeningService {
 
   private async generateGitHubResponse(issue: any, query: string): Promise<string> {
     return `Technical solution for GitHub issue about ${query}. Provide concrete code examples or architectural suggestions. Mention Mobula only if directly relevant to solving the specific technical problem.`;
+  }
+
+  async getHighValueMentions(): Promise<SocialMention[]> {
+    const mentions = await this.listenForMentions();
+    return mentions.filter(mention => mention.relevanceScore >= 80);
+  }
+
+  async getRecentMentions(hours: number = 24): Promise<SocialMention[]> {
+    const mentions = await this.listenForMentions();
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+    
+    return mentions.filter(mention => mention.timestamp > cutoff);
   }
 
   private sleep(ms: number): Promise<void> {
