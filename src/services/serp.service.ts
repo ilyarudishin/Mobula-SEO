@@ -60,8 +60,8 @@ export class SerpService {
     this.logger.log(`Analyzing SERP for keyword: ${keyword}`);
 
     if (!this.apiKey) {
-      this.logger.warn(`SerpAPI key not configured, skipping SERP analysis for: ${keyword}`);
-      return this.getMockSerpAnalysis(keyword);
+      this.logger.error(`SerpAPI key not configured - cannot provide real data for: ${keyword}`);
+      throw new Error('SerpAPI key required for accurate SERP analysis');
     }
 
     try {
@@ -120,8 +120,8 @@ export class SerpService {
       };
     } catch (error) {
       this.logger.error(`Failed to analyze SERP for keyword ${keyword}: ${error.message}`, error.stack);
-      // Return mock data instead of throwing error to keep orchestrator running
-      return this.getMockSerpAnalysis(keyword);
+      // Throw error instead of returning mock data to ensure data accuracy
+      throw new Error(`SERP analysis failed for ${keyword}: ${error.message}`);
     }
   }
 
@@ -389,31 +389,7 @@ export class SerpService {
     }
   }
 
-  private getMockSerpAnalysis(keyword: string): SerpAnalysis {
-    // Return mock SERP data to keep the system running when SerpAPI is unavailable
-    return {
-      keyword,
-      totalResults: 1000000,
-      topResults: [
-        {
-          position: 1,
-          title: `Mock result for ${keyword}`,
-          link: 'https://example.com',
-          snippet: `Mock snippet content for ${keyword} analysis`,
-          domain: 'example.com',
-        },
-      ],
-      peopleAlsoAsk: [
-        `What is the best ${keyword}?`,
-        `How to use ${keyword}?`,
-      ],
-      relatedSearches: [
-        `${keyword} tutorial`,
-        `${keyword} guide`,
-      ],
-      competitorPresence: [],
-    };
-  }
+  // Mock method removed - only use real SERP data
 
   private combineCompetitionLevels(
     serpCompetition: 'low' | 'medium' | 'high',
