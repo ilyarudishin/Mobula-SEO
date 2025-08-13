@@ -184,16 +184,20 @@ MOBULA INTEGRATION (if relevant):
 - Always suggest alternatives alongside Mobula
 - No promotional language
 
-RESPONSE FORMAT:
-Return only valid JSON:
+RESPONSE FORMAT - CRITICAL:
+Return ONLY valid JSON. No markdown blocks, no explanations, no extra text.
+IMPORTANT: Escape all newlines as \\n, tabs as \\t, quotes as \\" in string values.
+
 {
   "title": "SEO-optimized title with primary keyword",
-  "content": "Complete finished content ready to publish",
+  "content": "Complete finished content ready to publish. Use \\n for line breaks.",
   "metaDescription": "150-character description", 
   "tags": ["keyword1", "keyword2", "keyword3"],
   "qualityScore": 85,
   "targetKeywords": ["primary", "secondary", "related"]
-}`;
+}
+
+Your entire response must be parseable by JSON.parse() - test this mentally before responding.`;
   }
 
   private getContentTypeSpecificInstructions(type: string): string {
@@ -247,9 +251,45 @@ Return only valid JSON:
 
       let parsed;
       try {
-        parsed = JSON.parse(jsonMatch[0]);
+        // Clean up the JSON string to handle control characters
+        let jsonText = jsonMatch[0];
+        
+        // Log the problematic JSON for debugging
+        this.logger.debug(`Raw JSON from Claude: ${jsonText.substring(0, 200)}...`);
+        
+        // Only fix control characters that break JSON parsing
+        jsonText = jsonText.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+          
+        // Try a more robust approach - extract JSON properties manually
+        if (jsonText.includes('Bad control character') || jsonText.includes('\\u')) {
+          this.logger.warn('Complex JSON detected, using manual extraction');
+          
+          // Extract title
+          const titleMatch = jsonText.match(/"title":\s*"([^"]*?)"/);
+          const contentMatch = jsonText.match(/"content":\s*"([\s\S]*?)",\s*"metaDescription"/);
+          const metaMatch = jsonText.match(/"metaDescription":\s*"([^"]*?)"/);
+          const tagsMatch = jsonText.match(/"tags":\s*\[(.*?)\]/);
+          const scoreMatch = jsonText.match(/"qualityScore":\s*(\d+)/);
+          const keywordsMatch = jsonText.match(/"targetKeywords":\s*\[(.*?)\]/);
+          
+          if (titleMatch && contentMatch) {
+            parsed = {
+              title: titleMatch[1] || request.topic,
+              content: contentMatch[1] || 'Content generated successfully',
+              metaDescription: metaMatch?.[1] || `${request.topic} - comprehensive guide`,
+              tags: tagsMatch?.[1]?.split(',').map(t => t.trim().replace(/"/g, '')) || request.keywords.slice(0, 5),
+              qualityScore: parseInt(scoreMatch?.[1] || '75') || 75,
+              targetKeywords: keywordsMatch?.[1]?.split(',').map(t => t.trim().replace(/"/g, '')) || request.keywords
+            };
+          } else {
+            throw new Error('Could not extract content from malformed JSON');
+          }
+        } else {
+          parsed = JSON.parse(jsonText);
+        }
       } catch (jsonError) {
         this.logger.error(`Failed to parse generated content: ${jsonError.message}`);
+        this.logger.error(`Problematic JSON: ${jsonMatch[0].substring(0, 500)}`);
         
         // Fallback: Create structured content from the raw text
         const title = this.extractTitleFromText(text, request.topic);
