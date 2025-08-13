@@ -31,64 +31,68 @@ export class RedditDiscoveryService {
   private readonly seenPostIds = new Set<string>();
   private lastScanTimestamp: Date | null = null;
   
-  // Target subreddits with CRYPTO DATA PROVIDER discussions
+  // Target subreddits with DATA API & TRADING TERMINAL discussions
   private readonly subredditConfigs: SubredditConfig[] = [
     {
       name: 'ethdev',
-      keywords: ['data api', 'price api', 'market data', 'defi data', 'web3 data', 'moralis', 'alchemy'],
+      keywords: ['price api', 'market data api', 'trading data', 'defi data api', 'token data', 'real-time data'],
       maxPostsPerScan: 50,
-      minScore: 2,
+      minScore: 3,
     },
     {
       name: 'defi',
-      keywords: ['data provider', 'api', 'analytics', 'dashboard', 'tracking', 'yield data', 'protocol data'],
+      keywords: ['price data', 'trading api', 'yield data api', 'protocol data', 'tvl data', 'analytics api'],
       maxPostsPerScan: 40,
-      minScore: 2,
-    },
-    {
-      name: 'cryptodevs',
-      keywords: ['crypto api', 'blockchain api', 'data provider', 'price feeds', 'market data'],
-      maxPostsPerScan: 30,
-      minScore: 2,
+      minScore: 3,
     },
     {
       name: 'cryptocurrency',
-      keywords: ['data api', 'price api', 'trading bot', 'portfolio tracker', 'analytics', 'dashboard'],
-      maxPostsPerScan: 25,
+      keywords: ['price api', 'trading bot', 'market data', 'portfolio api', 'crypto terminal', 'trading platform'],
+      maxPostsPerScan: 30,
       minScore: 5,
     },
     {
-      name: 'webdev',
-      keywords: ['crypto data', 'blockchain api', 'web3 api', 'price feeds', 'trading data'],
+      name: 'algotrading',
+      keywords: ['crypto data feed', 'price feeds', 'trading api', 'market data', 'real-time prices', 'trading terminal'],
       maxPostsPerScan: 25,
       minScore: 3,
     },
     {
-      name: 'node',
-      keywords: ['crypto api', 'blockchain data', 'price feeds', 'trading bot', 'market data'],
+      name: 'cryptodevs',
+      keywords: ['crypto api', 'price api', 'market data api', 'trading data', 'blockchain data'],
+      maxPostsPerScan: 25,
+      minScore: 3,
+    },
+    {
+      name: 'webdev',
+      keywords: ['crypto dashboard', 'trading terminal', 'price tracker', 'market data', 'crypto api integration'],
       maxPostsPerScan: 20,
-      minScore: 2,
+      minScore: 3,
+    },
+    {
+      name: 'node',
+      keywords: ['crypto api', 'price api', 'trading bot api', 'market data', 'blockchain data api'],
+      maxPostsPerScan: 20,
+      minScore: 3,
     },
     {
       name: 'reactjs',
-      keywords: ['crypto dashboard', 'defi dashboard', 'price tracker', 'web3 data', 'crypto data'],
-      maxPostsPerScan: 20,
-      minScore: 2,
-    },
-    {
-      name: 'algotrading',
-      keywords: ['crypto data', 'price feeds', 'market data', 'trading api', 'real-time data'],
+      keywords: ['crypto dashboard', 'trading interface', 'price tracker', 'market data display', 'trading terminal ui'],
       maxPostsPerScan: 15,
-      minScore: 2,
+      minScore: 3,
     }
   ];
 
-  // LASER-FOCUSED on crypto data provider conversations
+  // FOCUSED on DATA APIs & TRADING TERMINAL needs
   private readonly opportunityKeywords = [
-    // Crypto Data Provider Needs
-    'crypto data api', 'crypto data provider', 'crypto data service', 'blockchain data api',
-    'crypto price api', 'crypto market data', 'real-time crypto data', 'crypto data feed',
-    'web3 data', 'defi data', 'nft data', 'token data', 'crypto analytics api',
+    // Data API Needs
+    'price api', 'market data api', 'crypto data api', 'trading data api', 'blockchain data api',
+    'real-time price', 'price feed', 'market feed', 'crypto prices', 'token prices',
+    'historical data', 'ohlc data', 'candlestick data', 'volume data', 'market cap data',
+    
+    // Trading Terminal APIs
+    'trading terminal', 'trading platform', 'trading interface', 'crypto terminal',
+    'portfolio tracker', 'trading bot', 'algorithmic trading', 'trading dashboard',
     
     // COMPREHENSIVE COMPETITOR LIST - ALL MAJOR CRYPTO DATA PROVIDERS
     // Tier 1 Competitors (Large Scale)
@@ -267,8 +271,8 @@ export class RedditDiscoveryService {
           config
         );
 
-        // Lower the threshold to find more opportunities
-        if (opportunityScore < 40) continue;
+        // Quality threshold - focus on genuinely valuable opportunities
+        if (opportunityScore < 55) continue;
 
         // CRITICAL: Filter out posts older than 1 year (stale opportunities)
         const postAge = Date.now() - (post.created_utc * 1000);
@@ -326,11 +330,23 @@ export class RedditDiscoveryService {
     };
     score *= subredditMultipliers[config.name] || 1.0;
 
-    // Opportunity indicators bonus
+    // Quality developer discussion indicators
     const postText = `${post.title} ${post.selftext}`.toLowerCase();
-    const questionWords = ['how', 'what', 'where', 'which', 'help', 'need'];
+    
+    // Question indicators (developers asking for help)
+    const questionWords = ['how', 'what', 'where', 'which', 'help', 'need', 'looking for', 'recommend'];
     const hasQuestion = questionWords.some(word => postText.includes(word));
-    if (hasQuestion) score += 15;
+    if (hasQuestion) score += 20;
+    
+    // Technical depth indicators (quality discussions)
+    const technicalWords = ['integrate', 'implementation', 'build', 'develop', 'code', 'api key', 'endpoint', 'response'];
+    const technicalMatches = technicalWords.filter(word => postText.includes(word)).length;
+    score += technicalMatches * 5;
+    
+    // Data/trading specific bonus
+    const dataWords = ['real-time', 'historical', 'price feed', 'market data', 'trading data', 'ohlc', 'volume'];
+    const dataMatches = dataWords.filter(word => postText.includes(word)).length;
+    score += dataMatches * 8;
 
     // Recency bonus (newer posts are better opportunities)
     const hoursSincePost = (Date.now() - post.created_utc * 1000) / (1000 * 60 * 60);
