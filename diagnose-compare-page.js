@@ -3,7 +3,12 @@ const axios = require('axios');
 async function diagnoseComparePage() {
   console.log('🔍 Diagnosing why mobula.io/compare isn\'t ranking for "5 dexscreener alternatives"...\n');
   
-  const SERP_API_KEY = "17c7f5808efa3237de191368e65820523d7d379e3754a42e14cfa6c97866d3f8";
+  const SERP_API_KEY = process.env.SERPAPI_KEY;
+  
+  if (!SERP_API_KEY) {
+    console.error('❌ SERPAPI_KEY not found in environment variables');
+    return;
+  }
   
   try {
     // First, check if the page exists in Google's index at all
