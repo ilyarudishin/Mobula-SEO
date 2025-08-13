@@ -31,65 +31,80 @@ export class RedditDiscoveryService {
   private readonly seenPostIds = new Set<string>();
   private lastScanTimestamp: Date | null = null;
   
-  // Target subreddits for blockchain/API discussions
+  // Target DEVELOPER-focused subreddits for blockchain/API discussions
   private readonly subredditConfigs: SubredditConfig[] = [
     {
-      name: 'cryptocurrency',
-      keywords: ['api', 'data', 'price', 'market data', 'trading', 'dex', 'defi'],
-      maxPostsPerScan: 50,
-      minScore: 10,
-    },
-    {
       name: 'ethdev',
-      keywords: ['api', 'data', 'web3', 'blockchain', 'ethereum', 'dapp'],
-      maxPostsPerScan: 30,
-      minScore: 5,
+      keywords: ['api', 'web3', 'blockchain', 'ethereum', 'dapp', 'smart contract', 'solidity'],
+      maxPostsPerScan: 50,
+      minScore: 3,
     },
     {
       name: 'webdev',
-      keywords: ['api', 'crypto', 'blockchain', 'web3', 'data'],
-      maxPostsPerScan: 30,
-      minScore: 10,
-    },
-    {
-      name: 'learnprogramming',
-      keywords: ['api', 'crypto', 'blockchain', 'web3', 'javascript'],
-      maxPostsPerScan: 20,
+      keywords: ['blockchain api', 'crypto api', 'web3', 'integration', 'backend'],
+      maxPostsPerScan: 40,
       minScore: 5,
     },
     {
       name: 'node',
-      keywords: ['api', 'crypto', 'blockchain', 'web3', 'express'],
-      maxPostsPerScan: 20,
-      minScore: 5,
+      keywords: ['blockchain', 'crypto api', 'web3', 'ethereum', 'express', 'backend'],
+      maxPostsPerScan: 30,
+      minScore: 3,
     },
     {
       name: 'reactjs',
-      keywords: ['api', 'crypto', 'web3', 'blockchain', 'frontend'],
-      maxPostsPerScan: 20,
-      minScore: 5,
+      keywords: ['web3', 'crypto', 'blockchain', 'dapp', 'frontend', 'integration'],
+      maxPostsPerScan: 30,
+      minScore: 3,
     },
     {
-      name: 'ethereum',
-      keywords: ['api', 'data', 'web3', 'dapp', 'smart contract'],
-      maxPostsPerScan: 30,
-      minScore: 5,
+      name: 'learnprogramming',
+      keywords: ['blockchain api', 'crypto api', 'web3', 'ethereum', 'programming'],
+      maxPostsPerScan: 25,
+      minScore: 3,
+    },
+    {
+      name: 'javascript',
+      keywords: ['blockchain', 'crypto api', 'web3', 'ethereum', 'node.js'],
+      maxPostsPerScan: 25,
+      minScore: 3,
+    },
+    {
+      name: 'backend',
+      keywords: ['blockchain api', 'crypto', 'web3', 'api integration', 'microservices'],
+      maxPostsPerScan: 20,
+      minScore: 3,
     },
     {
       name: 'defi',
-      keywords: ['api', 'data', 'analytics', 'price', 'yield'],
-      maxPostsPerScan: 25,
-      minScore: 5,
+      keywords: ['api', 'development', 'building', 'integration', 'smart contract'],
+      maxPostsPerScan: 20,
+      minScore: 3,
     }
   ];
 
-  // Keywords that indicate API/data needs
+  // Keywords that indicate DEVELOPER/API needs (not general crypto discussion)
   private readonly opportunityKeywords = [
-    'api', 'data', 'price feed', 'market data', 'trading data',
-    'blockchain data', 'crypto data', 'defi data', 'nft data',
-    'how to get', 'where to find', 'best way to', 'need help',
-    'looking for', 'struggling with', 'cant find', 'alternatives',
-    'recommendation', 'suggest', 'advice'
+    // Technical API needs
+    'api integration', 'api documentation', 'api endpoint', 'api key', 'api rate limit',
+    'blockchain api', 'crypto api', 'web3 api', 'ethereum api', 'polygon api',
+    'how to connect', 'how to integrate', 'how to fetch', 'how to query',
+    
+    // Developer problems
+    'building dapp', 'building app', 'developing', 'coding', 'programming',
+    'node.js', 'javascript', 'python', 'react', 'next.js', 'typescript',
+    
+    // Data access issues
+    'get blockchain data', 'fetch transaction', 'query smart contract', 'real-time data',
+    'websocket', 'price feeds', 'market data api', 'trading data api',
+    
+    // Help requests (specific)
+    'need help with', 'how do i', 'struggling to', 'cant figure out',
+    'looking for api', 'api recommendation', 'best api for', 'which api',
+    
+    // Infrastructure discussion
+    'alchemy alternative', 'moralis alternative', 'infura problems', 'rpc endpoint',
+    'node provider', 'infrastructure', 'backend', 'serverless'
   ];
 
   constructor(
