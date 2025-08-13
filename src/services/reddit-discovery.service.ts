@@ -31,80 +31,87 @@ export class RedditDiscoveryService {
   private readonly seenPostIds = new Set<string>();
   private lastScanTimestamp: Date | null = null;
   
-  // Target DEVELOPER-focused subreddits for blockchain/API discussions
+  // Target subreddits with CRYPTO DATA PROVIDER discussions
   private readonly subredditConfigs: SubredditConfig[] = [
     {
       name: 'ethdev',
-      keywords: ['api', 'web3', 'blockchain', 'ethereum', 'dapp', 'smart contract', 'solidity'],
+      keywords: ['data api', 'price api', 'market data', 'defi data', 'web3 data', 'moralis', 'alchemy'],
       maxPostsPerScan: 50,
-      minScore: 3,
-    },
-    {
-      name: 'webdev',
-      keywords: ['blockchain api', 'crypto api', 'web3', 'integration', 'backend'],
-      maxPostsPerScan: 40,
-      minScore: 5,
-    },
-    {
-      name: 'node',
-      keywords: ['blockchain', 'crypto api', 'web3', 'ethereum', 'express', 'backend'],
-      maxPostsPerScan: 30,
-      minScore: 3,
-    },
-    {
-      name: 'reactjs',
-      keywords: ['web3', 'crypto', 'blockchain', 'dapp', 'frontend', 'integration'],
-      maxPostsPerScan: 30,
-      minScore: 3,
-    },
-    {
-      name: 'learnprogramming',
-      keywords: ['blockchain api', 'crypto api', 'web3', 'ethereum', 'programming'],
-      maxPostsPerScan: 25,
-      minScore: 3,
-    },
-    {
-      name: 'javascript',
-      keywords: ['blockchain', 'crypto api', 'web3', 'ethereum', 'node.js'],
-      maxPostsPerScan: 25,
-      minScore: 3,
-    },
-    {
-      name: 'backend',
-      keywords: ['blockchain api', 'crypto', 'web3', 'api integration', 'microservices'],
-      maxPostsPerScan: 20,
-      minScore: 3,
+      minScore: 2,
     },
     {
       name: 'defi',
-      keywords: ['api', 'development', 'building', 'integration', 'smart contract'],
-      maxPostsPerScan: 20,
+      keywords: ['data provider', 'api', 'analytics', 'dashboard', 'tracking', 'yield data', 'protocol data'],
+      maxPostsPerScan: 40,
+      minScore: 2,
+    },
+    {
+      name: 'cryptodevs',
+      keywords: ['crypto api', 'blockchain api', 'data provider', 'price feeds', 'market data'],
+      maxPostsPerScan: 30,
+      minScore: 2,
+    },
+    {
+      name: 'cryptocurrency',
+      keywords: ['data api', 'price api', 'trading bot', 'portfolio tracker', 'analytics', 'dashboard'],
+      maxPostsPerScan: 25,
+      minScore: 5,
+    },
+    {
+      name: 'webdev',
+      keywords: ['crypto data', 'blockchain api', 'web3 api', 'price feeds', 'trading data'],
+      maxPostsPerScan: 25,
       minScore: 3,
+    },
+    {
+      name: 'node',
+      keywords: ['crypto api', 'blockchain data', 'price feeds', 'trading bot', 'market data'],
+      maxPostsPerScan: 20,
+      minScore: 2,
+    },
+    {
+      name: 'reactjs',
+      keywords: ['crypto dashboard', 'defi dashboard', 'price tracker', 'web3 data', 'crypto data'],
+      maxPostsPerScan: 20,
+      minScore: 2,
+    },
+    {
+      name: 'algotrading',
+      keywords: ['crypto data', 'price feeds', 'market data', 'trading api', 'real-time data'],
+      maxPostsPerScan: 15,
+      minScore: 2,
     }
   ];
 
-  // Keywords that indicate DEVELOPER/API needs (not general crypto discussion)
+  // LASER-FOCUSED on crypto data provider conversations
   private readonly opportunityKeywords = [
-    // Technical API needs
-    'api integration', 'api documentation', 'api endpoint', 'api key', 'api rate limit',
-    'blockchain api', 'crypto api', 'web3 api', 'ethereum api', 'polygon api',
-    'how to connect', 'how to integrate', 'how to fetch', 'how to query',
+    // Crypto Data Provider Needs
+    'crypto data api', 'crypto data provider', 'crypto data service', 'blockchain data api',
+    'crypto price api', 'crypto market data', 'real-time crypto data', 'crypto data feed',
+    'web3 data', 'defi data', 'nft data', 'token data', 'crypto analytics api',
     
-    // Developer problems
-    'building dapp', 'building app', 'developing', 'coding', 'programming',
-    'node.js', 'javascript', 'python', 'react', 'next.js', 'typescript',
+    // Data Provider Comparisons & Alternatives
+    'coingecko api', 'coinmarketcap api', 'moralis api', 'alchemy api', 'covalent api',
+    'dune analytics', 'the graph', 'bitquery', 'glassnode api', 'messari api',
+    'alternative to', 'vs', 'comparison', 'better than', 'cheaper than',
     
-    // Data access issues
-    'get blockchain data', 'fetch transaction', 'query smart contract', 'real-time data',
-    'websocket', 'price feeds', 'market data api', 'trading data api',
+    // Specific Data Needs
+    'price feeds', 'market data', 'trading data', 'defi protocols', 'liquidity data',
+    'transaction history', 'wallet data', 'token metadata', 'nft metadata',
+    'yield farming data', 'staking data', 'governance data', 'cross-chain data',
     
-    // Help requests (specific)
-    'need help with', 'how do i', 'struggling to', 'cant figure out',
-    'looking for api', 'api recommendation', 'best api for', 'which api',
+    // Infrastructure & Access Issues
+    'rate limits', 'api limits', 'data latency', 'real-time updates', 'websocket',
+    'historical data', 'bulk data', 'data accuracy', 'data coverage',
+    'blockchain coverage', '300+ chains', 'multi-chain', 'cross-chain',
     
-    // Infrastructure discussion
-    'alchemy alternative', 'moralis alternative', 'infura problems', 'rpc endpoint',
-    'node provider', 'infrastructure', 'backend', 'serverless'
+    // Use Case Discussions
+    'trading bot', 'portfolio tracker', 'defi dashboard', 'analytics platform',
+    'crypto dashboard', 'price tracker', 'arbitrage bot', 'dex aggregator',
+    
+    // Pain Points
+    'expensive api', 'limited free tier', 'slow api', 'missing data', 'outdated data',
+    'unreliable api', 'downtime', 'poor documentation', 'complex integration'
   ];
 
   constructor(
