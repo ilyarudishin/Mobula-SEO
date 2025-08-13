@@ -41,7 +41,17 @@ export class SeoOrchestratorService {
     'best crypto API',
     'blockchain data integration',
     'crypto price API',
-    'DeFi protocol data'
+    'DeFi protocol data',
+    // COMPARISON PAGE KEYWORDS for mobula.io/compare tracking
+    'mobula vs coingecko',
+    'mobula vs coinmarketcap', 
+    'mobula vs moralis',
+    'crypto api comparison',
+    'blockchain data provider comparison',
+    'best crypto data api',
+    'mobula alternative',
+    'coingecko alternative',
+    'moralis alternative'
   ];
 
   private readonly competitorKeywords = [
