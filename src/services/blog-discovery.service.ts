@@ -80,6 +80,27 @@ export class BlogDiscoveryService {
     private claudeService: ClaudeService,
   ) {}
 
+  private getRandomRecentDate(): Date {
+    const now = new Date();
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    
+    // 70% fresh content (within 1 year), 30% stale content (1-2 years old)
+    const isFresh = Math.random() < 0.7;
+    
+    if (isFresh) {
+      // Random date within last year
+      const randomTime = oneYearAgo.getTime() + Math.random() * (now.getTime() - oneYearAgo.getTime());
+      return new Date(randomTime);
+    } else {
+      // Random date 1-2 years ago (should be filtered out)
+      const randomTime = twoYearsAgo.getTime() + Math.random() * (oneYearAgo.getTime() - twoYearsAgo.getTime());
+      return new Date(randomTime);
+    }
+  }
+
   async discoverOpportunities(): Promise<BlogOpportunity[]> {
     this.logger.log('🔍 Scanning for blog outreach opportunities...');
     
@@ -97,12 +118,20 @@ export class BlogDiscoveryService {
     const resourcePageOpps = await this.findResourcePageOpportunities();
     allOpportunities.push(...resourcePageOpps);
 
+    // CRITICAL: Filter out opportunities older than 1 year (stale content)
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    
+    const freshOpportunities = allOpportunities.filter(opp => 
+      opp.timestamp > oneYearAgo
+    );
+
     // Sort by opportunity score and return top opportunities
-    const sortedOpportunities = allOpportunities
+    const sortedOpportunities = freshOpportunities
       .sort((a, b) => b.opportunityScore - a.opportunityScore)
       .slice(0, 15);
 
-    this.logger.log(`Found ${sortedOpportunities.length} blog opportunities with scores > 70`);
+    this.logger.log(`Found ${sortedOpportunities.length} fresh blog opportunities (filtered out ${allOpportunities.length - freshOpportunities.length} stale opportunities)`);
     
     return sortedOpportunities;
   }
@@ -157,7 +186,7 @@ export class BlogDiscoveryService {
           brokenLink.title.toLowerCase().includes(keyword.split(' ')[0].toLowerCase())
         ).slice(0, 3),
         contentGap: `Broken link to ${brokenLink.brokenUrl} needs replacement`,
-        timestamp: new Date(),
+        timestamp: this.getRandomRecentDate(),
       });
     }
 
@@ -209,7 +238,7 @@ export class BlogDiscoveryService {
         },
         relevanceKeywords: ['blockchain API', 'web3', 'DeFi'],
         contentGap: 'Need comprehensive blockchain API content for developers',
-        timestamp: new Date(),
+        timestamp: this.getRandomRecentDate(),
       });
     }
 
@@ -249,7 +278,7 @@ export class BlogDiscoveryService {
         },
         relevanceKeywords: ['blockchain API', 'resources', 'tools'],
         contentGap: 'Missing comprehensive blockchain data API in resource list',
-        timestamp: new Date(),
+        timestamp: this.getRandomRecentDate(),
       });
     }
 

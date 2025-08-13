@@ -266,6 +266,13 @@ export class RedditDiscoveryService {
         // Only consider high-value opportunities
         if (opportunityScore < 60) continue;
 
+        // CRITICAL: Filter out posts older than 1 year (stale opportunities)
+        const postAge = Date.now() - (post.created_utc * 1000);
+        const oneYearInMs = 365 * 24 * 60 * 60 * 1000;
+        if (postAge > oneYearInMs) {
+          continue; // Skip posts older than 1 year
+        }
+
         // Generate engagement suggestion (not automated response)
         const engagementSuggestion = await this.generateEngagementSuggestion(post, relevantKeywords);
 
