@@ -408,7 +408,7 @@ export class NotionService {
       }
     }
 
-    throw new Error(`${operationName} failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`);
+    throw new Error(`${operationName} failed after ${maxRetries} attempts: ${lastError!.message}`);
   }
 
   private sleep(ms: number): Promise<void> {
