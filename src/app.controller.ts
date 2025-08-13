@@ -204,6 +204,29 @@ export class AppController {
     }
   }
 
+  @Get('debug-gsc')
+  async debugGSC() {
+    try {
+      // Check if credentials are loaded
+      const hasCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 || 
+                           process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      
+      return {
+        credentialsConfigured: !!hasCredentials,
+        credentialType: process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 ? 'base64' : 
+                       process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'json' : 'none',
+        targetDomain: 'mobula.io',
+        expectedServiceAccount: 'mobula-seo@seo-agent-467515.iam.gserviceaccount.com',
+        message: 'Check these details match your Search Console setup'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
   @Get('test-reddit')
   async testReddit() {
     try {
