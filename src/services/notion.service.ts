@@ -33,6 +33,7 @@ export class NotionService {
     const config = this.configService.config;
     this.notion = new Client({
       auth: config.notion.apiKey,
+      timeoutMs: 30000, // 30 second timeout
     });
     this.databaseId = config.notion.databaseId;
   }
@@ -57,6 +58,13 @@ export class NotionService {
   }
 
   async createOpportunity(opportunity: OpportunityRecord): Promise<string> {
+    return await this.retryNotionRequest(
+      () => this.createOpportunityInternal(opportunity),
+      `createOpportunity: ${opportunity.title}`
+    );
+  }
+
+  private async createOpportunityInternal(opportunity: OpportunityRecord): Promise<string> {
     this.logger.log(`Creating opportunity: ${opportunity.title}`);
 
     try {
@@ -371,5 +379,39 @@ export class NotionService {
       this.logger.error(`Failed to create weekly report: ${error.message}`, error.stack);
       throw new Error(`Failed to create weekly report: ${error.message}`);
     }
+  }
+
+  private async retryNotionRequest<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    maxRetries: number = 3
+  ): Promise<T> {
+    let lastError: Error;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.logger.log(`${operationName} - Attempt ${attempt}/${maxRetries}`);
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        this.logger.warn(`${operationName} - Attempt ${attempt} failed: ${error.message}`);
+
+        if (attempt === maxRetries) {
+          this.logger.error(`${operationName} - All ${maxRetries} attempts failed. Last error: ${error.message}`);
+          break;
+        }
+
+        // Exponential backoff: 2s, 4s, 8s
+        const delay = Math.pow(2, attempt) * 1000;
+        this.logger.log(`${operationName} - Retrying in ${delay}ms...`);
+        await this.sleep(delay);
+      }
+    }
+
+    throw new Error(`${operationName} failed after ${maxRetries} attempts: ${lastError?.message || 'Unknown error'}`);
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
