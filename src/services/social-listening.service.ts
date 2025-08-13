@@ -41,18 +41,14 @@ export class SocialListeningService {
     
     const allMentions: SocialMention[] = [];
 
-    // Focus on platforms with public APIs for accurate data
+    // Focus only on platforms you requested
     try {
       // HackerNews has a public API - monitor for crypto/blockchain discussions
       const hnMentions = await this.monitorHackerNews();
       allMentions.push(...hnMentions);
       
-      // GitHub public API - monitor issues/discussions about crypto APIs
-      const githubMentions = await this.monitorGitHub();
-      allMentions.push(...githubMentions);
-
-      // Twitter and LinkedIn require extensive API setup - skip for now
-      this.logger.log('Twitter/LinkedIn monitoring requires API approval - focusing on accessible platforms');
+      // Skip GitHub - not requested by user
+      this.logger.log('Focusing on HackerNews only for social listening as requested');
 
     } catch (error) {
       this.logger.error(`Social listening error: ${error.message}`);
@@ -151,75 +147,7 @@ export class SocialListeningService {
     return mentions;
   }
 
-  private async monitorGitHub(): Promise<SocialMention[]> {
-    this.logger.log('🐱 Monitoring GitHub for blockchain API issues/discussions...');
-    
-    const mentions: SocialMention[] = [];
-    
-    try {
-      // Search GitHub issues for blockchain API discussions
-      const searchQueries = [
-        'blockchain API rate limit',
-        'crypto API slow',
-        'web3 API latency',
-        'DeFi API alternatives'
-      ];
-      
-      for (const query of searchQueries) {
-        const response = await axios.get(`https://api.github.com/search/issues`, {
-          params: {
-            q: query,
-            sort: 'updated',
-            per_page: 10,
-          },
-          headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'MobulaAPI-SEOAgent/1.0.0',
-          },
-        });
-        
-        for (const issue of response.data.items) {
-          // Check age
-          const issueAge = Date.now() - new Date(issue.updated_at).getTime();
-          const oneYearInMs = 365 * 24 * 60 * 60 * 1000;
-          if (issueAge > oneYearInMs) continue;
-          
-          const relevanceScore = this.calculateGitHubRelevance(issue, query);
-          if (relevanceScore < 60) continue;
-          
-          const mention: SocialMention = {
-            id: `gh_${issue.id}`,
-            platform: 'github',
-            title: issue.title,
-            content: `${issue.title} - ${issue.body?.substring(0, 200) || ''}...`,
-            url: issue.html_url,
-            author: {
-              username: issue.user.login,
-              profileUrl: issue.user.html_url,
-            },
-            engagement: {
-              comments: issue.comments,
-            },
-            relevanceScore,
-            opportunityType: this.determineOpportunityType(issue.title + ' ' + (issue.body || '')),
-            targetKeywords: [query],
-            suggestedResponse: await this.generateGitHubResponse(issue, query),
-            timestamp: new Date(issue.updated_at),
-          };
-          
-          mentions.push(mention);
-        }
-        
-        // Rate limiting for GitHub API
-        await this.sleep(1000);
-      }
-      
-    } catch (error) {
-      this.logger.error(`Error monitoring GitHub: ${error.message}`);
-    }
-    
-    return mentions;
-  }
+  // GitHub monitoring removed - not requested by user
 
   private calculateRelevanceScore(item: any, keywords: string[]): number {
     let score = 0;
@@ -241,30 +169,7 @@ export class SocialListeningService {
     return Math.min(100, score);
   }
 
-  private calculateGitHubRelevance(issue: any, query: string): number {
-    let score = 0;
-    
-    // Base relevance
-    score += 40;
-    
-    // Issue activity
-    score += Math.min(20, issue.comments * 2);
-    
-    // Recency
-    const issueAge = Date.now() - new Date(issue.updated_at).getTime();
-    const dayInMs = 24 * 60 * 60 * 1000;
-    if (issueAge < dayInMs * 7) score += 15;
-    else if (issueAge < dayInMs * 30) score += 10;
-    
-    // Keywords in title/body
-    const text = `${issue.title} ${issue.body || ''}`.toLowerCase();
-    const relevantTerms = ['api', 'rate limit', 'slow', 'latency', 'performance', 'alternative'];
-    relevantTerms.forEach(term => {
-      if (text.includes(term)) score += 5;
-    });
-    
-    return Math.min(100, score);
-  }
+  // GitHub relevance calculation removed - not needed
 
   private determineOpportunityType(content: string): 'question' | 'complaint' | 'mention' | 'tutorial_request' {
     content = content.toLowerCase();
@@ -286,9 +191,7 @@ export class SocialListeningService {
     return `Helpful technical response about ${keywords.join(', ')} for HackerNews discussion. Focus on providing value first, mention Mobula naturally if relevant to the specific technical problem being discussed.`;
   }
 
-  private async generateGitHubResponse(issue: any, query: string): Promise<string> {
-    return `Technical solution for GitHub issue about ${query}. Provide concrete code examples or architectural suggestions. Mention Mobula only if directly relevant to solving the specific technical problem.`;
-  }
+  // GitHub response generation removed - not needed
 
   async getHighValueMentions(): Promise<SocialMention[]> {
     const mentions = await this.listenForMentions();

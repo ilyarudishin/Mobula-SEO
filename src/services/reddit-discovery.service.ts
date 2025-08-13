@@ -241,30 +241,34 @@ export class RedditDiscoveryService {
         // Skip if post score is too low
         if (post.score < config.minScore) continue;
 
-        // Check if post contains relevant keywords
+        // Check if post contains ANY relevant keywords from either list
         const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
+        
+        // Check subreddit-specific keywords
         const relevantKeywords = config.keywords.filter(keyword => 
           postText.includes(keyword.toLowerCase())
         );
-
-        if (relevantKeywords.length === 0) continue;
-
-        // Check if it's an opportunity (asking for help, looking for solutions)
-        const isOpportunity = this.opportunityKeywords.some(keyword => 
+        
+        // Check broader opportunity keywords  
+        const opportunityMatches = this.opportunityKeywords.filter(keyword => 
           postText.includes(keyword.toLowerCase())
         );
-
-        if (!isOpportunity) continue;
+        
+        // Must match at least one keyword from either list
+        if (relevantKeywords.length === 0 && opportunityMatches.length === 0) continue;
+        
+        // Combine all matched keywords
+        const allMatchedKeywords = [...relevantKeywords, ...opportunityMatches];
 
         // Calculate opportunity score
         const opportunityScore = this.calculateOpportunityScore(
           post,
-          relevantKeywords,
+          allMatchedKeywords,
           config
         );
 
-        // Only consider high-value opportunities
-        if (opportunityScore < 60) continue;
+        // Lower the threshold to find more opportunities
+        if (opportunityScore < 40) continue;
 
         // CRITICAL: Filter out posts older than 1 year (stale opportunities)
         const postAge = Date.now() - (post.created_utc * 1000);
@@ -274,7 +278,7 @@ export class RedditDiscoveryService {
         }
 
         // Generate engagement suggestion (not automated response)
-        const engagementSuggestion = await this.generateEngagementSuggestion(post, relevantKeywords);
+        const engagementSuggestion = await this.generateEngagementSuggestion(post, allMatchedKeywords);
 
         opportunities.push({
           postId: post.id,
@@ -287,7 +291,7 @@ export class RedditDiscoveryService {
           commentCount: post.num_comments,
           opportunityScore,
           suggestedResponse: engagementSuggestion,
-          keywords: relevantKeywords,
+          keywords: allMatchedKeywords,
           timestamp: new Date(post.created_utc * 1000),
         });
       }
