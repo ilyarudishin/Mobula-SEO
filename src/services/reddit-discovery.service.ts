@@ -90,28 +90,71 @@ export class RedditDiscoveryService {
     'crypto price api', 'crypto market data', 'real-time crypto data', 'crypto data feed',
     'web3 data', 'defi data', 'nft data', 'token data', 'crypto analytics api',
     
-    // Data Provider Comparisons & Alternatives
-    'coingecko api', 'coinmarketcap api', 'moralis api', 'alchemy api', 'covalent api',
-    'dune analytics', 'the graph', 'bitquery', 'glassnode api', 'messari api',
-    'alternative to', 'vs', 'comparison', 'better than', 'cheaper than',
+    // COMPREHENSIVE COMPETITOR LIST - ALL MAJOR CRYPTO DATA PROVIDERS
+    // Tier 1 Competitors (Large Scale)
+    'coingecko api', 'coinmarketcap api', 'coinbase api', 'binance api', 'kraken api',
+    'coindesk api', 'cryptocompare api', 'nomics api', 'livecoinwatch api',
     
-    // Specific Data Needs
+    // Web3 Infrastructure Providers
+    'moralis api', 'alchemy api', 'infura api', 'quicknode api', 'getblock api',
+    'nodereal api', 'ankr api', 'chainstack api', 'pocket network', 'blast api',
+    
+    // Blockchain Data Analytics
+    'covalent api', 'dune analytics', 'the graph', 'bitquery', 'glassnode api', 
+    'messari api', 'chainalysis api', 'elliptic api', 'nansen api', 'footprint analytics',
+    'flipside crypto', 'santiment api', 'lunarcrush api', 'defipulse api',
+    
+    // DeFi Specific Data
+    'debank api', 'zapper api', '1inch api', 'uniswap api', 'compound api',
+    'aave api', 'curve api', 'yearn api', 'defillama api', 'coingecko defi',
+    
+    // NFT Data Providers
+    'opensea api', 'rarible api', 'nftport api', 'moralis nft', 'alchemy nft',
+    'reservoir api', 'simplehash api', 'nft api', 'nftgo api',
+    
+    // Market Data & Trading
+    'tradingview api', 'yahoo finance', 'alpha vantage', 'polygon.io crypto',
+    'iex cloud crypto', 'tiingo crypto', 'quandl crypto', 'marketstack crypto',
+    
+    // Real-time & WebSocket Providers
+    'websocket api', 'real-time crypto', 'live price feeds', 'streaming data',
+    'pusher crypto', 'socket.io crypto', 'ws crypto data',
+    
+    // Data Provider Comparisons & Alternatives
+    'alternative to', 'vs', 'comparison', 'better than', 'cheaper than',
+    'switch from', 'migrate from', 'replace', 'substitute for',
+    
+    // Specific Data Needs & Use Cases
     'price feeds', 'market data', 'trading data', 'defi protocols', 'liquidity data',
     'transaction history', 'wallet data', 'token metadata', 'nft metadata',
     'yield farming data', 'staking data', 'governance data', 'cross-chain data',
+    'bridge data', 'layer 2 data', 'ethereum data', 'bitcoin data', 'polygon data',
     
-    // Infrastructure & Access Issues
-    'rate limits', 'api limits', 'data latency', 'real-time updates', 'websocket',
-    'historical data', 'bulk data', 'data accuracy', 'data coverage',
-    'blockchain coverage', '300+ chains', 'multi-chain', 'cross-chain',
+    // LOW LATENCY & HIGH THROUGHPUT PAIN POINTS (Mobula's Key Advantages)
+    'rate limits', 'api limits', 'data latency', 'high latency', 'slow api', 'slow data',
+    'rate limited', 'throttled', 'timeout', 'connection timeout', 'response time',
+    'real-time updates', 'websocket', 'low latency', 'high throughput', 'fast api',
+    'instant data', 'millisecond latency', 'sub-second data', 'real-time pricing',
+    
+    // Data Quality & Coverage Issues
+    'historical data', 'bulk data', 'data accuracy', 'data coverage', 'missing data',
+    'blockchain coverage', '300+ chains', 'multi-chain', 'cross-chain', 'chain support',
+    'outdated data', 'stale data', 'data freshness', 'data reliability',
+    
+    // Cost & Access Pain Points
+    'expensive api', 'limited free tier', 'pricing', 'cost per request', 'monthly limits',
+    'credit limits', 'quota exceeded', 'usage limits', 'subscription cost',
+    
+    // Reliability & Performance Issues
+    'unreliable api', 'downtime', 'api downtime', 'service interruption', 'outage',
+    'poor documentation', 'complex integration', 'difficult setup', 'auth issues',
+    'api errors', '503 error', '429 error', 'timeout error',
     
     // Use Case Discussions
     'trading bot', 'portfolio tracker', 'defi dashboard', 'analytics platform',
     'crypto dashboard', 'price tracker', 'arbitrage bot', 'dex aggregator',
-    
-    // Pain Points
-    'expensive api', 'limited free tier', 'slow api', 'missing data', 'outdated data',
-    'unreliable api', 'downtime', 'poor documentation', 'complex integration'
+    'yield farming bot', 'liquidation bot', 'mev bot', 'crypto exchange',
+    'wallet app', 'portfolio app', 'trading platform', 'crypto app development'
   ];
 
   constructor(
