@@ -58,12 +58,6 @@ export class RedditDiscoveryService {
       minScore: 2,
     },
     {
-      name: 'cryptodevs',
-      keywords: ['"which service"', 'api', 'coingecko', 'moralis', '"data provider"', 'endpoint'],
-      maxPostsPerScan: 25,
-      minScore: 1,
-    },
-    {
       name: 'defi',
       keywords: ['api', '"price data"', 'coingecko', 'moralis', '"data feed"', 'endpoint', '"what do you use"'],
       maxPostsPerScan: 20,
@@ -96,6 +90,10 @@ export class RedditDiscoveryService {
     
     // WebSocket/Real-time - Mobula's streaming
     'websocket', 'real time', 'live data', 'streaming',
+    
+    // Common API search terms that developers use
+    'json api', 'rest api', 'api call', 'api request', 'api response', 'api key',
+    'rate limit', 'api documentation', 'api pricing', 'free api', 'paid api',
     
     // Competitor mentions (perfect opportunities)
     'coingecko api', 'coinmarketcap api', 'moralis api', 'alchemy api',
@@ -218,7 +216,7 @@ export class RedditDiscoveryService {
         ];
         
         const hasCryptoContext = cryptoKeywords.some(crypto => postText.includes(crypto.toLowerCase()));
-        const isRelevantSubreddit = ['ethereum', 'ethdev', 'solana', 'web3', 'cryptodevs', 'defi'].includes(config.name);
+        const isRelevantSubreddit = ['ethereum', 'ethdev', 'solana', 'web3', 'defi'].includes(config.name);
         
         // Skip if neither crypto context nor relevant subreddit  
         if (!hasCryptoContext && !isRelevantSubreddit) continue;
@@ -294,7 +292,6 @@ export class RedditDiscoveryService {
       'solana': 1.4,
       'defi': 1.3,
       'web3': 1.3,
-      'cryptodevs': 1.4,
     };
     score *= subredditMultipliers[config.name] || 1.0;
 

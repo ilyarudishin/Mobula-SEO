@@ -213,20 +213,21 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Reddit discovery - runs once daily at 8 AM
-  @Cron('0 8 * * *')
+  // Reddit discovery - runs twice daily at 8 AM and 6 PM for maximum coverage
+  @Cron('0 8,18 * * *')
   async scanRedditOpportunities(): Promise<void> {
-    this.logger.log('🔍 Daily Reddit scan for Mobula-relevant opportunities...');
+    this.logger.log('🔍 Bi-daily Reddit scan for NEW Mobula-relevant opportunities...');
 
     try {
-      const redditOpportunities = await this.redditDiscoveryService.discoverOpportunities();
+      // Use getNewOpportunities to only get fresh posts (no duplicates)
+      const newRedditOpportunities = await this.redditDiscoveryService.getNewOpportunities();
       
-      if (redditOpportunities.length > 0) {
-        this.logger.log(`Found ${redditOpportunities.length} NEW Mobula-relevant Reddit opportunities`);
+      if (newRedditOpportunities.length > 0) {
+        this.logger.log(`🆕 Found ${newRedditOpportunities.length} NEW Mobula-relevant Reddit opportunities`);
         
         let savedCount = 0;
-        // Save all opportunities to Notion (using the new endpoint logic)
-        for (const opportunity of redditOpportunities) {
+        // Save only NEW opportunities to Notion 
+        for (const opportunity of newRedditOpportunities) {
           try {
             await this.notionService.createOpportunity({
               type: 'reddit_response',
@@ -256,16 +257,19 @@ export class SeoOrchestratorService {
           }
         }
 
-        // Notify Slack about new opportunities
-        await this.slackService.sendOpportunitiesFoundAlert({
-          count: savedCount,
-          topOpportunity: `r/${redditOpportunities[0].subreddit}: ${redditOpportunities[0].postTitle}`,
-          averageScore: Math.round(redditOpportunities.reduce((sum, opp) => sum + opp.opportunityScore, 0) / redditOpportunities.length),
-        });
+        // Only notify Slack when we have NEW opportunities (no spam for duplicates)
+        if (savedCount > 0) {
+          await this.slackService.sendOpportunitiesFoundAlert({
+            count: savedCount,
+            topOpportunity: `r/${newRedditOpportunities[0].subreddit}: ${newRedditOpportunities[0].postTitle}`,
+            averageScore: Math.round(newRedditOpportunities.reduce((sum, opp) => sum + opp.opportunityScore, 0) / newRedditOpportunities.length),
+          });
+          this.logger.log(`🔔 Notified Slack about ${savedCount} NEW Reddit opportunities`);
+        }
         
         this.logger.log(`✅ Saved ${savedCount} new Reddit opportunities to Notion`);
       } else {
-        this.logger.log('✅ No new Reddit opportunities found today');
+        this.logger.log('✅ No new Reddit opportunities found this scan (no duplicates, no notifications)');
       }
     } catch (error) {
       this.logger.error('Error in Reddit opportunity scan', error.stack);
