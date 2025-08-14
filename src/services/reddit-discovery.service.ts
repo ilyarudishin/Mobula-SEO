@@ -35,32 +35,32 @@ export class RedditDiscoveryService {
   private readonly subredditConfigs: SubredditConfig[] = [
     {
       name: 'ethdev',
-      keywords: ['"what do you use"', '"which api"', '"recommend api"', 'coingecko', 'moralis'],
-      maxPostsPerScan: 25,
+      keywords: ['"what do you use"', '"which api"', '"recommend api"', 'coingecko', 'moralis', 'api', '"data source"', 'endpoint'],
+      maxPostsPerScan: 30,
       minScore: 1,
     },
     {
       name: 'ethereum', 
-      keywords: ['"best api"', '"what api"', 'coingecko', 'moralis', 'alchemy'],
-      maxPostsPerScan: 25,
+      keywords: ['"best api"', '"what api"', 'coingecko', 'moralis', 'alchemy', 'api', '"price data"', 'endpoint'],
+      maxPostsPerScan: 30,
       minScore: 1,
     },
     {
       name: 'solana',
-      keywords: ['"what api"', '"which api"', '"recommend api"', 'coingecko', 'moralis', 'alchemy', '"data api"'],
-      maxPostsPerScan: 25,
+      keywords: ['"what api"', '"which api"', '"recommend api"', 'coingecko', 'moralis', 'alchemy', '"data api"', 'api', 'endpoint', '"price feed"'],
+      maxPostsPerScan: 30,
       minScore: 1,
     },
     {
       name: 'cryptocurrency',
-      keywords: ['"what do you use"', 'api', 'coingecko', 'coinmarketcap'],
-      maxPostsPerScan: 20,
+      keywords: ['"what do you use"', 'api', 'coingecko', 'coinmarketcap', '"data source"', 'endpoint', '"price api"'],
+      maxPostsPerScan: 25,
       minScore: 2,
     },
     {
       name: 'cryptodevs',
-      keywords: ['"which service"', 'api', 'coingecko', 'moralis'],
-      maxPostsPerScan: 20,
+      keywords: ['"which service"', 'api', 'coingecko', 'moralis', '"data provider"', 'endpoint'],
+      maxPostsPerScan: 25,
       minScore: 1,
     }
   ];
@@ -91,8 +91,8 @@ export class RedditDiscoveryService {
   ];
 
   // REQUIRE: Posts must contain both a question word AND development context
-  private readonly questionWords = ['how', 'what', 'which', 'where', 'who', 'why', 'when', 'help', 'need', 'looking for', 'recommend', 'suggest', 'advice'];
-  private readonly buildingWords = ['build', 'create', 'develop', 'make', 'implement', 'integrate', 'code', 'program', 'api', 'bot', 'dashboard', 'app', 'platform'];
+  private readonly questionWords = ['how', 'what', 'which', 'where', 'who', 'why', 'when', 'help', 'need', 'looking for', 'recommend', 'suggest', 'advice', 'anyone', 'does anyone', 'thoughts', 'opinions', 'experience', 'best way', 'alternative'];
+  private readonly buildingWords = ['build', 'create', 'develop', 'make', 'implement', 'integrate', 'code', 'program', 'api', 'bot', 'dashboard', 'app', 'platform', 'trading', 'project', 'solution', 'tool', 'service', 'data', 'feed', 'source'];
 
   constructor(
     private configService: ConfigService,
@@ -129,23 +129,24 @@ export class RedditDiscoveryService {
   }
 
   async getNewOpportunities(): Promise<RedditOpportunity[]> {
-    // CLEAR cache for fresh search
-    this.seenPostIds.clear();
-    
+    // Get all opportunities but filter for new ones only
     const allOpportunities = await this.discoverOpportunities();
     
-    // Add post IDs to our seen set
-    allOpportunities.forEach(opp => this.seenPostIds.add(opp.postId));
+    // Filter for only new opportunities (not seen before)
+    const newOpportunities = allOpportunities.filter(opp => !this.seenPostIds.has(opp.postId));
+    
+    // Add new post IDs to our seen set
+    newOpportunities.forEach(opp => this.seenPostIds.add(opp.postId));
     
     this.lastScanTimestamp = new Date();
     
-    if (allOpportunities.length > 0) {
-      this.logger.log(`🆕 Found ${allOpportunities.length} Reddit opportunities`);
+    if (newOpportunities.length > 0) {
+      this.logger.log(`🆕 Found ${newOpportunities.length} NEW Reddit opportunities (${allOpportunities.length} total scanned, ${allOpportunities.length - newOpportunities.length} already seen)`);
     } else {
-      this.logger.log(`✅ No Reddit opportunities found`);
+      this.logger.log(`✅ No new Reddit opportunities found (scanned ${allOpportunities.length} posts, all previously seen)`);
     }
     
-    return allOpportunities;
+    return newOpportunities;
   }
 
   private async scrapeSubreddit(config: SubredditConfig): Promise<RedditOpportunity[]> {

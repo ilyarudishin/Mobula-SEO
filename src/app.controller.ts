@@ -331,8 +331,8 @@ export class AppController {
   @Get('scan-reddit-save-to-notion')
   async scanRedditAndSaveToNotion() {
     try {
-      // Get all Reddit opportunities (bypass high-value filter since Claude API is down)
-      const allOpportunities = await this.redditService.discoverOpportunities();
+      // Get fresh Reddit opportunities (clears cache first)
+      const allOpportunities = await this.redditService.getNewOpportunities();
       
       let savedCount = 0;
       const savedOpportunities: any[] = [];
