@@ -205,8 +205,7 @@ export class SeoOrchestratorService {
         }
       }
 
-      // Update performance data for published content
-      await this.updatePerformanceData();
+      // Note: Performance data (GSC) is updated separately once daily at 7 AM to avoid duplicates
       
     } catch (error) {
       this.logger.error('Error in continuous monitoring', error.stack);
@@ -430,16 +429,59 @@ export class SeoOrchestratorService {
     }
   }
 
-  // DAILY GSC TRACKING - runs once per day at 7 AM (ONLY place for GSC data)
+  // DAILY GSC TRACKING & REPORTING - runs once per day at 7 AM (ONLY place for GSC data)
   @Cron('0 7 * * *')
   async dailyGscTracking(): Promise<void> {
-    this.logger.log('📊 Running daily GSC keyword position tracking');
+    this.logger.log('📊 Running daily GSC tracking and performance reporting (ONCE daily)');
     
     try {
-      // Track keyword positions - this is the ONLY daily GSC call
+      // 1. Track keyword positions
       const gscKeywordData = await this.gscService.trackKeywordPositions(this.coreKeywords.slice(0, 10), 7);
+      this.logger.log(`✅ GSC keyword tracking completed: ${gscKeywordData.length} keywords tracked`);
       
-      this.logger.log(`✅ Daily GSC tracking completed: ${gscKeywordData.length} keywords tracked`);
+      // 2. Get performance data for reporting (once daily)
+      const topPages = await this.gscService.getTopPages(30, 20);
+      const topQueries = await this.gscService.getTopQueries(30, 50);
+      
+      // Log performance insights
+      if (topPages.length > 0) {
+        this.logger.log(`📈 Top performing page: ${topPages[0].page} (${topPages[0].clicks} clicks)`);
+      }
+      
+      if (topQueries.length > 0) {
+        this.logger.log(`🔍 Top performing query: "${topQueries[0].query}" (${topQueries[0].clicks} clicks, pos ${topQueries[0].position.toFixed(1)})`);
+      }
+      
+      // 3. Create consolidated daily GSC report in Notion
+      const performanceReport = {
+        topPages: topPages.slice(0, 10),
+        topQueries: topQueries.slice(0, 20),
+        generatedAt: new Date().toISOString(),
+      };
+      
+      await this.notionService.saveGeneratedContent(
+        {
+          title: `📊 Daily GSC Performance Report - ${new Date().toLocaleDateString()}`,
+          content: `# Daily GSC Performance Summary\n\n## Top Pages:\n${topPages.slice(0, 5).map(p => `- ${p.page}: ${p.clicks} clicks (pos ${p.position.toFixed(1)})`).join('\n')}\n\n## Top Queries:\n${topQueries.slice(0, 10).map(q => `- "${q.query}": ${q.clicks} clicks (pos ${q.position.toFixed(1)})`).join('\n')}\n\n## Keyword Tracking:\n${gscKeywordData.length} core keywords monitored for position changes.`,
+          targetKeywords: topQueries.slice(0, 5).map(q => q.query),
+          qualityScore: 95,
+          wordCount: 300,
+          metaDescription: `Daily GSC performance report with keyword tracking for ${new Date().toLocaleDateString()}`,
+          tags: ['gsc', 'performance', 'daily', 'analytics'],
+        },
+        'blog_article',
+        95,
+        {
+          reportType: 'daily-gsc-performance',
+          dataSource: 'Google Search Console',
+          generatedAt: new Date().toISOString(),
+          keywordData: gscKeywordData,
+          topPagesData: performanceReport.topPages,
+          topQueriesData: performanceReport.topQueries,
+        }
+      );
+      
+      this.logger.log(`✅ Daily GSC report saved to Notion (keywords + performance)`);
       
     } catch (error) {
       this.logger.error(`❌ Daily GSC tracking failed: ${error.message}`);
@@ -630,56 +672,6 @@ export class SeoOrchestratorService {
     }
   }
 
-  private async updatePerformanceData(): Promise<void> {
-    this.logger.log('📈 Updating performance data for published content using GSC');
-    
-    try {
-      // Get top performing content from GSC
-      const topPages = await this.gscService.getTopPages(30, 20);
-      const topQueries = await this.gscService.getTopQueries(30, 50);
-      
-      // Log performance insights
-      if (topPages.length > 0) {
-        this.logger.log(`Top performing page: ${topPages[0].page} (${topPages[0].clicks} clicks)`);
-      }
-      
-      if (topQueries.length > 0) {
-        this.logger.log(`Top performing query: "${topQueries[0].query}" (${topQueries[0].clicks} clicks, pos ${topQueries[0].position.toFixed(1)})`);
-      }
-      
-      // Store performance data in Notion for analysis
-      const performanceReport = {
-        topPages: topPages.slice(0, 10),
-        topQueries: topQueries.slice(0, 20),
-        generatedAt: new Date().toISOString(),
-      };
-      
-      // Save performance snapshot to Notion
-      await this.notionService.saveGeneratedContent(
-        {
-          title: `GSC Performance Report - ${new Date().toLocaleDateString()}`,
-          content: `# Performance Summary\n\n## Top Pages:\n${topPages.slice(0, 5).map(p => `- ${p.page}: ${p.clicks} clicks (pos ${p.position.toFixed(1)})`).join('\n')}\n\n## Top Queries:\n${topQueries.slice(0, 10).map(q => `- "${q.query}": ${q.clicks} clicks (pos ${q.position.toFixed(1)})`).join('\n')}`,
-          targetKeywords: topQueries.slice(0, 5).map(q => q.query),
-          qualityScore: 95,
-          wordCount: 200,
-          metaDescription: `GSC performance report showing top content and queries for ${new Date().toLocaleDateString()}`,
-          tags: ['gsc', 'performance', 'analytics', 'report'],
-        },
-        'blog_article',
-        95,
-        {
-          reportType: 'gsc-performance',
-          dataSource: 'Google Search Console',
-          generatedAt: new Date().toISOString(),
-          topPagesData: performanceReport.topPages,
-          topQueriesData: performanceReport.topQueries,
-        }
-      );
-      
-    } catch (error) {
-      this.logger.error(`Failed to update performance data: ${error.message}`, error.stack);
-    }
-  }
 
   private async sendExecutionSummary(metrics: ExecutionMetrics): Promise<void> {
     const summary = `🤖 **SEO Execution Cycle #${this.executionCount} Complete**
