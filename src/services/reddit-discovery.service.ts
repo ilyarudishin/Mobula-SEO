@@ -46,6 +46,12 @@ export class RedditDiscoveryService {
       minScore: 1,
     },
     {
+      name: 'solana',
+      keywords: ['"what api"', '"which api"', '"recommend api"', 'coingecko', 'moralis', 'alchemy', '"data api"'],
+      maxPostsPerScan: 25,
+      minScore: 1,
+    },
+    {
       name: 'cryptocurrency',
       keywords: ['"what do you use"', 'api', 'coingecko', 'coinmarketcap'],
       maxPostsPerScan: 20,
@@ -199,7 +205,7 @@ export class RedditDiscoveryService {
         ];
         
         const hasCryptoContext = cryptoKeywords.some(crypto => postText.includes(crypto.toLowerCase()));
-        const isRelevantSubreddit = ['ethereum', 'ethdev', 'web3', 'cryptodevs'].includes(config.name);
+        const isRelevantSubreddit = ['ethereum', 'ethdev', 'solana', 'web3', 'cryptodevs'].includes(config.name);
         
         // Skip if neither crypto context nor relevant subreddit  
         if (!hasCryptoContext && !isRelevantSubreddit) continue;
@@ -272,6 +278,7 @@ export class RedditDiscoveryService {
       'ethdev': 1.5,
       'webdev': 1.3,
       'ethereum': 1.4,
+      'solana': 1.4,
       'defi': 1.3,
     };
     score *= subredditMultipliers[config.name] || 1.0;
