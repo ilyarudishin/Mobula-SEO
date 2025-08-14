@@ -328,6 +328,22 @@ export class AppController {
     }
   }
 
+  @Get('clear-reddit-cache')
+  async clearRedditCache() {
+    try {
+      this.redditService.clearSeenPostsCache();
+      return {
+        status: 'success',
+        message: 'Reddit cache cleared - next scan will find fresh opportunities'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
   @Get('scan-reddit-save-to-notion')
   async scanRedditAndSaveToNotion() {
     try {
@@ -354,7 +370,15 @@ export class AppController {
 **Keywords Matched:** ${opp.keywords.join(', ')}
 **Opportunity Score:** ${opp.opportunityScore}/100
 
-**Manual Action Required:** Review post and provide helpful technical advice about crypto/blockchain data APIs if relevant. Focus on genuine value, not promotion.`,
+---
+
+**🤖 AI-GENERATED RESPONSE DRAFT:**
+
+${opp.suggestedResponse}
+
+---
+
+**📝 ACTION:** Review the AI-generated response above, customize it if needed, and post as a helpful comment on Reddit. Focus on providing genuine value to the developer community.`,
             priorityScore: opp.opportunityScore,
             status: 'identified',
             targetKeywords: opp.keywords,

@@ -392,6 +392,13 @@ Format as actionable manual engagement guide following Mobula's authentic commun
     };
   }
 
+  // FOR TESTING: Clear seen posts cache
+  clearSeenPostsCache(): void {
+    this.seenPostIds.clear();
+    this.lastScanTimestamp = null;
+    this.logger.log('🔄 Cleared seen posts cache for testing purposes');
+  }
+
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));

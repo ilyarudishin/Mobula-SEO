@@ -242,7 +242,15 @@ export class SeoOrchestratorService {
 **Keywords Matched:** ${opportunity.keywords.join(', ')}
 **Opportunity Score:** ${opportunity.opportunityScore}/100
 
-**Manual Action Required:** Review post and provide helpful technical advice about Mobula's services if relevant. Focus on genuine value, not promotion.`,
+---
+
+**🤖 AI-GENERATED RESPONSE DRAFT:**
+
+${opportunity.suggestedResponse}
+
+---
+
+**📝 ACTION:** Review the AI-generated response above, customize it if needed, and post as a helpful comment on Reddit. Focus on providing genuine value to the developer community.`,
               priorityScore: opportunity.opportunityScore,
               status: 'identified',
               targetKeywords: opportunity.keywords,
