@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Anthropic from '@anthropic-ai/sdk';
 import { ConfigService } from '../config/config.service';
+import { OpenAIService } from './openai.service';
 
 export interface ContentGenerationRequest {
   type: 'blog_article' | 'reddit_response' | 'outreach_email' | 'technical_guide';
@@ -26,7 +27,10 @@ export class ClaudeService {
   private readonly logger = new Logger(ClaudeService.name);
   private readonly anthropic: Anthropic;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private openaiService: OpenAIService,
+  ) {
     const config = this.configService.config;
     this.anthropic = new Anthropic({
       apiKey: config.claude.apiKey,
@@ -60,7 +64,48 @@ export class ClaudeService {
 
       throw new Error('Unexpected response format from Claude');
     } catch (error) {
-      this.logger.error(`Failed to generate content: ${error.message}`, error.stack);
+      this.logger.error(`Claude generation failed: ${error.message}`);
+      this.logger.error(`Full error details:`, error);
+      
+      // Check if it's a credit/quota issue - need to check both message and the full error string
+      const errorString = JSON.stringify(error);
+      const isCreditsIssue = 
+        error.message?.includes('credit') || 
+        error.message?.includes('quota') || 
+        error.message?.includes('insufficient') ||
+        errorString.includes('credit balance is too low') ||
+        errorString.includes('insufficient_quota') ||
+        errorString.includes('usage_limit');
+        
+      if (isCreditsIssue) {
+        this.logger.log('Claude credits exhausted, failing over to OpenAI for this request');
+        
+        try {
+          const openaiResponse = await this.openaiService.generateContent({
+            type: request.type,
+            topic: request.topic,
+            keywords: request.keywords,
+            targetAudience: request.targetAudience,
+            competitorAnalysis: request.competitorAnalysis,
+            additionalContext: request.additionalContext,
+          });
+          
+          // Convert OpenAI response to Claude format
+          return {
+            title: openaiResponse.title,
+            content: openaiResponse.content,
+            metaDescription: openaiResponse.metaDescription,
+            tags: openaiResponse.tags,
+            qualityScore: openaiResponse.qualityScore,
+            wordCount: openaiResponse.wordCount,
+            targetKeywords: openaiResponse.targetKeywords,
+          };
+        } catch (openaiError) {
+          this.logger.error(`OpenAI failover also failed: ${openaiError.message}`);
+          throw new Error(`Both Claude and OpenAI failed: Claude (${error.message}), OpenAI (${openaiError.message})`);
+        }
+      }
+      
       throw new Error(`Content generation failed: ${error.message}`);
     }
   }
@@ -251,7 +296,7 @@ Your entire response must be parseable by JSON.parse() - test this mentally befo
         throw new Error('No JSON found in response');
       }
 
-      let parsed;
+      let parsed: any;
       try {
         // Clean up the JSON string to handle control characters
         let jsonText = jsonMatch[0];

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '../config/config.service';
-import { ClaudeService } from './claude.service';
+import { OpenAIService } from './openai.service';
 import axios from 'axios';
 
 export interface RedditOpportunity {
@@ -90,7 +90,7 @@ export class RedditDiscoveryService {
 
   constructor(
     private configService: ConfigService,
-    private claudeService: ClaudeService,
+    private openaiService: OpenAIService,
   ) {
     this.logger.log('Reddit Discovery Service initialized - using web scraping for monitoring only');
   }
@@ -334,7 +334,7 @@ ENGAGEMENT STRATEGY SUGGESTION:
 Format as actionable manual engagement guide following Mobula's authentic community engagement principles.`;
 
     try {
-      const response = await this.claudeService.generateContent({
+      const response = await this.openaiService.generateContent({
         type: 'reddit_response',
         topic: post.title,
         keywords: keywords,
@@ -344,8 +344,8 @@ Format as actionable manual engagement guide following Mobula's authentic commun
 
       return response.content;
     } catch (error) {
-      this.logger.error(`Failed to generate engagement suggestion: ${error.message}`);
-      return `MANUAL ENGAGEMENT OPPORTUNITY: User asking about ${keywords.join(', ')} - consider offering helpful technical advice about blockchain API data solutions. Focus on being genuinely helpful rather than promotional.`;
+      this.logger.error(`Failed to generate engagement suggestion with OpenAI: ${error.message}`);
+      return `MANUAL ENGAGEMENT OPPORTUNITY: User asking about ${keywords.join(', ')} - consider offering helpful technical advice about Mobula's blockchain API services. Focus on being genuinely helpful rather than promotional.`;
     }
   }
 

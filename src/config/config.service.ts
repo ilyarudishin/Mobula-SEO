@@ -5,6 +5,9 @@ export interface ApiConfig {
   claude: {
     apiKey: string;
   };
+  openai: {
+    apiKey: string;
+  };
   notion: {
     apiKey: string;
     databaseId: string;
@@ -55,6 +58,9 @@ export class ConfigService {
     return {
       claude: {
         apiKey: this.nestConfigService.get<string>('CLAUDE_API_KEY', ''),
+      },
+      openai: {
+        apiKey: this.nestConfigService.get<string>('OPENAI_API_KEY', ''),
       },
       notion: {
         apiKey: this.nestConfigService.get<string>('NOTION_API_KEY', ''),

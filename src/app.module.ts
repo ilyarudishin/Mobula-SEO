@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { ConfigModule } from './config/config.module';
 import { SeoOrchestratorService } from './orchestrator/seo-orchestrator.service';
 import { ClaudeService } from './services/claude.service';
+import { OpenAIService } from './services/openai.service';
 import { NotionService } from './services/notion.service';
 import { SlackService } from './services/slack.service';
 import { SerpService } from './services/serp.service';
@@ -24,6 +25,7 @@ import { SocialListeningService } from './services/social-listening.service';
     AppService,
     SeoOrchestratorService,
     ClaudeService,
+    OpenAIService,
     NotionService,
     SlackService,
     SerpService,
