@@ -65,6 +65,9 @@ export class SerpService {
     }
 
     try {
+      // Add delay to prevent rate limiting issues
+      await this.sleep(1000); // 1 second delay between requests
+      
       const response = await axios.get('https://serpapi.com/search.json', {
         params: {
           engine: 'google',
@@ -72,7 +75,7 @@ export class SerpService {
           api_key: this.apiKey,
           num: 20,
         },
-        timeout: 10000,
+        timeout: 15000, // Increased timeout
       });
 
       const data = response.data;
@@ -118,10 +121,71 @@ export class SerpService {
         featuredSnippet,
         competitorPresence,
       };
-    } catch (error) {
-      this.logger.error(`Failed to analyze SERP for keyword ${keyword}: ${error.message}`, error.stack);
-      // Throw error instead of returning mock data to ensure data accuracy
-      throw new Error(`SERP analysis failed for ${keyword}: ${error.message}`);
+    } catch (error: any) {
+      // Log detailed error information
+      if (error.response) {
+        this.logger.error(`SERP API error for ${keyword}: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+        
+        // Retry once on 401/429 errors (auth/rate limit issues) 
+        if (error.response.status === 401 || error.response.status === 429) {
+          this.logger.log(`Retrying SERP analysis for ${keyword} after ${error.response.status} error...`);
+          await this.sleep(3000); // Wait 3 seconds before retry
+          
+          try {
+            const retryResponse = await axios.get('https://serpapi.com/search.json', {
+              params: {
+                engine: 'google',
+                q: keyword,
+                api_key: this.apiKey,
+                num: 20,
+              },
+              timeout: 15000,
+            });
+            
+            this.logger.log(`Retry successful for keyword: ${keyword}`);
+            
+            // Process successful retry response
+            const retryData = retryResponse.data;
+            const topResults: SearchResult[] = (retryData.organic_results || [])
+              .slice(0, 10)
+              .map((result: any, index: number) => ({
+                position: index + 1,
+                title: result.title || '',
+                link: result.link || '',
+                snippet: result.snippet || '',
+                domain: this.extractDomain(result.link || ''),
+              }));
+
+            const featuredSnippet = retryData.answer_box ? {
+              title: retryData.answer_box.title || '',
+              snippet: retryData.answer_box.snippet || retryData.answer_box.answer || '',
+              source: retryData.answer_box.displayed_link || '',
+            } : null;
+
+            const peopleAlsoAsk = (retryData.people_also_ask || []).map((item: any) => item.question);
+            const relatedSearches = (retryData.related_searches || []).map((item: any) => item.query);
+            const competitorPresence = this.identifyCompetitors(topResults);
+
+            return {
+              keyword,
+              totalResults: retryData.search_information?.total_results || 0,
+              topResults,
+              peopleAlsoAsk,
+              relatedSearches,
+              featuredSnippet,
+              competitorPresence,
+            };
+            
+          } catch (retryError: any) {
+            this.logger.error(`SERP retry also failed for ${keyword}: ${retryError.response?.status || retryError.message}`);
+          }
+        }
+      } else {
+        this.logger.error(`SERP network error for ${keyword}: ${error.message}`, error.stack);
+      }
+      
+      // Throw error to maintain data accuracy requirements
+      throw new Error(`SERP analysis failed for ${keyword}: ${error.response?.status || error.message}`);
     }
   }
 
