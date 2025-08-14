@@ -31,137 +31,62 @@ export class RedditDiscoveryService {
   private readonly seenPostIds = new Set<string>();
   private lastScanTimestamp: Date | null = null;
   
-  // Target subreddits with DATA API & TRADING TERMINAL discussions
+  // SEARCH-TARGETED: Use search terms that find API discussions from the last year
   private readonly subredditConfigs: SubredditConfig[] = [
     {
       name: 'ethdev',
-      keywords: ['price api', 'market data api', 'trading data', 'defi data api', 'token data', 'real-time data'],
-      maxPostsPerScan: 50,
-      minScore: 3,
+      keywords: ['"what do you use"', '"which api"', '"recommend api"', 'coingecko', 'moralis'],
+      maxPostsPerScan: 25,
+      minScore: 1,
     },
     {
-      name: 'defi',
-      keywords: ['price data', 'trading api', 'yield data api', 'protocol data', 'tvl data', 'analytics api'],
-      maxPostsPerScan: 40,
-      minScore: 3,
+      name: 'ethereum', 
+      keywords: ['"best api"', '"what api"', 'coingecko', 'moralis', 'alchemy'],
+      maxPostsPerScan: 25,
+      minScore: 1,
     },
     {
       name: 'cryptocurrency',
-      keywords: ['price api', 'trading bot', 'market data', 'portfolio api', 'crypto terminal', 'trading platform'],
-      maxPostsPerScan: 30,
-      minScore: 5,
-    },
-    {
-      name: 'algotrading',
-      keywords: ['crypto data feed', 'price feeds', 'trading api', 'market data', 'real-time prices', 'trading terminal'],
-      maxPostsPerScan: 25,
-      minScore: 3,
+      keywords: ['"what do you use"', 'api', 'coingecko', 'coinmarketcap'],
+      maxPostsPerScan: 20,
+      minScore: 2,
     },
     {
       name: 'cryptodevs',
-      keywords: ['crypto api', 'price api', 'market data api', 'trading data', 'blockchain data'],
-      maxPostsPerScan: 25,
-      minScore: 3,
-    },
-    {
-      name: 'webdev',
-      keywords: ['crypto dashboard', 'trading terminal', 'price tracker', 'market data', 'crypto api integration'],
+      keywords: ['"which service"', 'api', 'coingecko', 'moralis'],
       maxPostsPerScan: 20,
-      minScore: 3,
-    },
-    {
-      name: 'node',
-      keywords: ['crypto api', 'price api', 'trading bot api', 'market data', 'blockchain data api'],
-      maxPostsPerScan: 20,
-      minScore: 3,
-    },
-    {
-      name: 'reactjs',
-      keywords: ['crypto dashboard', 'trading interface', 'price tracker', 'market data display', 'trading terminal ui'],
-      maxPostsPerScan: 15,
-      minScore: 3,
+      minScore: 1,
     }
   ];
 
-  // STRICT: ONLY crypto/blockchain data APIs - NO generic data infrastructure
-  private readonly opportunityKeywords = [
-    // Crypto-specific API Needs
-    'crypto api', 'blockchain api', 'token api', 'defi api', 'web3 api',
-    'bitcoin api', 'ethereum api', 'solana api', 'polygon api', 'avalanche api',
-    'crypto price api', 'token price api', 'blockchain data api', 'crypto market data',
-    'real-time crypto price', 'crypto price feed', 'token price feed', 'crypto websocket',
-    'historical crypto data', 'crypto ohlc', 'token ohlc', 'crypto volume data', 'token market cap',
+  // MOBULA DOCS ONLY: Must match exact services from Mobula documentation
+  private readonly mobulaDocServices = [
+    // Market Data API (Octopus) - Mobula's core offering
+    'price api', 'market data', 'crypto prices', 'token prices', 'trading pairs',
+    'price feed', 'market cap', 'volume data', 'ohlc', 'price chart',
     
-    // Trading Terminal APIs
-    'trading terminal', 'trading platform', 'trading interface', 'crypto terminal',
-    'portfolio tracker', 'trading bot', 'algorithmic trading', 'trading dashboard',
+    // Wallet Data API - Mobula's wallet analytics
+    'wallet data', 'wallet api', 'transaction history', 'wallet activity',
+    'token holdings', 'wallet balance', 'portfolio data', 'defi positions',
     
-    // COMPREHENSIVE COMPETITOR LIST - ALL MAJOR CRYPTO DATA PROVIDERS
-    // Tier 1 Competitors (Large Scale)
-    'coingecko api', 'coinmarketcap api', 'coinbase api', 'binance api', 'kraken api',
-    'coindesk api', 'cryptocompare api', 'nomics api', 'livecoinwatch api',
+    // Metadata API (Metacore) - Mobula's token metadata
+    'token metadata', 'token info', 'token data', 'contract data',
+    'token details', 'asset metadata',
     
-    // Web3 Infrastructure Providers
-    'moralis api', 'alchemy api', 'infura api', 'quicknode api', 'getblock api',
-    'nodereal api', 'ankr api', 'chainstack api', 'pocket network', 'blast api',
+    // Multi-chain Data - Mobula's 30+ chains
+    'multi chain', 'cross chain', 'multiple blockchains', 'all chains',
     
-    // Blockchain Data Analytics
-    'covalent api', 'dune analytics', 'the graph', 'bitquery', 'glassnode api', 
-    'messari api', 'chainalysis api', 'elliptic api', 'nansen api', 'footprint analytics',
-    'flipside crypto', 'santiment api', 'lunarcrush api', 'defipulse api',
+    // WebSocket/Real-time - Mobula's streaming
+    'websocket', 'real time', 'live data', 'streaming',
     
-    // DeFi Specific Data
-    'debank api', 'zapper api', '1inch api', 'uniswap api', 'compound api',
-    'aave api', 'curve api', 'yearn api', 'defillama api', 'coingecko defi',
-    
-    // NFT Data Providers
-    'opensea api', 'rarible api', 'nftport api', 'moralis nft', 'alchemy nft',
-    'reservoir api', 'simplehash api', 'nft api', 'nftgo api',
-    
-    // Market Data & Trading
-    'tradingview api', 'yahoo finance', 'alpha vantage', 'polygon.io crypto',
-    'iex cloud crypto', 'tiingo crypto', 'quandl crypto', 'marketstack crypto',
-    
-    // Real-time & WebSocket Providers
-    'websocket api', 'real-time crypto', 'live price feeds', 'streaming data',
-    'pusher crypto', 'socket.io crypto', 'ws crypto data',
-    
-    // Data Provider Comparisons & Alternatives
-    'alternative to', 'vs', 'comparison', 'better than', 'cheaper than',
-    'switch from', 'migrate from', 'replace', 'substitute for',
-    
-    // Specific Data Needs & Use Cases
-    'price feeds', 'market data', 'trading data', 'defi protocols', 'liquidity data',
-    'transaction history', 'wallet data', 'token metadata', 'nft metadata',
-    'yield farming data', 'staking data', 'governance data', 'cross-chain data',
-    'bridge data', 'layer 2 data', 'ethereum data', 'bitcoin data', 'polygon data',
-    
-    // LOW LATENCY & HIGH THROUGHPUT PAIN POINTS (Mobula's Key Advantages)
-    'rate limits', 'api limits', 'data latency', 'high latency', 'slow api', 'slow data',
-    'rate limited', 'throttled', 'timeout', 'connection timeout', 'response time',
-    'real-time updates', 'websocket', 'low latency', 'high throughput', 'fast api',
-    'instant data', 'millisecond latency', 'sub-second data', 'real-time pricing',
-    
-    // Data Quality & Coverage Issues
-    'historical data', 'bulk data', 'data accuracy', 'data coverage', 'missing data',
-    'blockchain coverage', '300+ chains', 'multi-chain', 'cross-chain', 'chain support',
-    'outdated data', 'stale data', 'data freshness', 'data reliability',
-    
-    // Cost & Access Pain Points
-    'expensive api', 'limited free tier', 'pricing', 'cost per request', 'monthly limits',
-    'credit limits', 'quota exceeded', 'usage limits', 'subscription cost',
-    
-    // Reliability & Performance Issues
-    'unreliable api', 'downtime', 'api downtime', 'service interruption', 'outage',
-    'poor documentation', 'complex integration', 'difficult setup', 'auth issues',
-    'api errors', '503 error', '429 error', 'timeout error',
-    
-    // Use Case Discussions
-    'trading bot', 'portfolio tracker', 'defi dashboard', 'analytics platform',
-    'crypto dashboard', 'price tracker', 'arbitrage bot', 'dex aggregator',
-    'yield farming bot', 'liquidation bot', 'mev bot', 'crypto exchange',
-    'wallet app', 'portfolio app', 'trading platform', 'crypto app development'
+    // Competitor mentions (perfect opportunities)
+    'coingecko api', 'coinmarketcap api', 'moralis api', 'alchemy api',
+    'coingecko', 'coinmarketcap', 'moralis', 'alchemy'
   ];
+
+  // REQUIRE: Posts must contain both a question word AND development context
+  private readonly questionWords = ['how', 'what', 'which', 'where', 'who', 'why', 'when', 'help', 'need', 'looking for', 'recommend', 'suggest', 'advice'];
+  private readonly buildingWords = ['build', 'create', 'develop', 'make', 'implement', 'integrate', 'code', 'program', 'api', 'bot', 'dashboard', 'app', 'platform'];
 
   constructor(
     private configService: ConfigService,
@@ -198,39 +123,31 @@ export class RedditDiscoveryService {
   }
 
   async getNewOpportunities(): Promise<RedditOpportunity[]> {
+    // CLEAR cache for fresh search
+    this.seenPostIds.clear();
+    
     const allOpportunities = await this.discoverOpportunities();
     
-    // Filter out opportunities we've already seen
-    const newOpportunities = allOpportunities.filter(opp => !this.seenPostIds.has(opp.postId));
-    
-    // Add new post IDs to our seen set
-    newOpportunities.forEach(opp => this.seenPostIds.add(opp.postId));
-    
-    // Clean up old post IDs (keep only last 500 to prevent memory leaks)
-    if (this.seenPostIds.size > 500) {
-      const idsArray = Array.from(this.seenPostIds);
-      const toKeep = idsArray.slice(-400); // Keep last 400
-      this.seenPostIds.clear();
-      toKeep.forEach(id => this.seenPostIds.add(id));
-    }
+    // Add post IDs to our seen set
+    allOpportunities.forEach(opp => this.seenPostIds.add(opp.postId));
     
     this.lastScanTimestamp = new Date();
     
-    if (newOpportunities.length > 0) {
-      this.logger.log(`🆕 Found ${newOpportunities.length} NEW Reddit opportunities (${allOpportunities.length - newOpportunities.length} already seen)`);
+    if (allOpportunities.length > 0) {
+      this.logger.log(`🆕 Found ${allOpportunities.length} Reddit opportunities`);
     } else {
-      this.logger.log(`✅ No new Reddit opportunities found (scanned ${allOpportunities.length} posts, all previously seen)`);
+      this.logger.log(`✅ No Reddit opportunities found`);
     }
     
-    return newOpportunities;
+    return allOpportunities;
   }
 
   private async scrapeSubreddit(config: SubredditConfig): Promise<RedditOpportunity[]> {
     const opportunities: RedditOpportunity[] = [];
 
     try {
-      // Use Reddit's JSON API (public, no auth required)
-      const url = `https://www.reddit.com/r/${config.name}/hot.json?limit=${config.maxPostsPerScan}`;
+      // Search through the last year, not just hot posts
+      const url = `https://www.reddit.com/r/${config.name}/search.json?q=${config.keywords.join(' OR ')}&restrict_sr=1&sort=relevance&t=year&limit=${config.maxPostsPerScan}`;
       
       const response = await axios.get(url, {
         headers: {
@@ -244,74 +161,51 @@ export class RedditDiscoveryService {
       for (const postData of posts) {
         const post = postData.data;
         
+        // Skip if we've already seen this post
+        if (this.seenPostIds.has(post.id)) continue;
+        
         // Skip if post score is too low
         if (post.score < config.minScore) continue;
 
-        // Check if post contains ANY relevant keywords from either list
+        // ULTRA-STRICT: Post must be a development question about APIs/building
         const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
         
-        // Check subreddit-specific keywords
-        const relevantKeywords = config.keywords.filter(keyword => 
-          postText.includes(keyword.toLowerCase())
+        // REQUIREMENT 1: Must match services from Mobula's documentation
+        const docServiceMatches = this.mobulaDocServices.filter(phrase => 
+          postText.includes(phrase.toLowerCase())
         );
+        if (docServiceMatches.length === 0) continue;
+
+        // REQUIREMENT 2: Must be asking for help or building something
+        const hasQuestionWord = this.questionWords.some(word => postText.includes(word));
+        const hasBuildingContext = this.buildingWords.some(word => postText.includes(word));
+        if (!hasQuestionWord && !hasBuildingContext) continue;
         
-        // Check broader opportunity keywords  
-        const opportunityMatches = this.opportunityKeywords.filter(keyword => 
-          postText.includes(keyword.toLowerCase())
-        );
-        
-        // Must match at least one keyword from either list
-        if (relevantKeywords.length === 0 && opportunityMatches.length === 0) continue;
-        
-        // STRICT CRYPTO VALIDATION: Reject spam, ads, and non-crypto content
+        // SIMPLIFIED SPAM FILTER: Reject obvious spam/memes/investment advice
         const rejectKeywords = [
-          // Trading/Investment Advice & Speculation
-          'buy', 'sell', 'hold', 'moon', 'pump', 'dump', 'investment advice',
-          'price prediction', 'bull market', 'bear market', 'to the moon',
-          'diamond hands', 'paper hands', 'hodl', 'when lambo', 'wen moon',
-          'financial advice', 'not financial advice', 'dyor', 'nfa', 'wagmi', 'ngmi',
-          
-          // Spam/Advertisements/Self-Promotion
-          'check out my', 'follow me', 'subscribe', 'upvote this', 'like this',
-          'dm me', 'telegram me', 'discord link', 'click here', 'sign up now',
-          'referral', 'affiliate', 'promo code', 'discount', 'free coins',
-          'airdrop', 'giveaway', 'contest', 'lottery', 'presale',
-          
-          // Generic non-crypto data infrastructure
-          'sql database', 'mysql', 'postgres', 'mongodb', 'redis cache',
-          'aws api', 'google cloud api', 'azure api', 'weather api', 'news api',
-          'stock market api', 'forex api', 'traditional finance', 'bank api',
-          
-          // Meme/Non-technical content
-          'meme coin', 'joke token', 'funny story', 'lol', 'haha',
-          'this is the way', 'ser', 'gm ser', 'gn ser', 'anon'
+          'buy', 'sell', 'hold', 'moon', 'pump', 'dump', 'hodl', 'to the moon',
+          'check out my', 'follow me', 'dm me', 'telegram', 'discord',
+          'airdrop', 'giveaway', 'promo code', 'referral',
+          'meme coin', 'joke token', 'lol', 'haha', 'ser', 'anon'
         ];
         
-        // Reject posts containing spam/non-crypto keywords
+        // Reject posts containing spam keywords
         if (rejectKeywords.some(reject => postText.includes(reject.toLowerCase()))) continue;
         
-        // REQUIRE: Must be crypto/blockchain specific (not generic data)
-        const cryptoRequiredKeywords = [
-          'crypto', 'blockchain', 'bitcoin', 'ethereum', 'token', 'defi', 'web3',
-          'solana', 'polygon', 'avalanche', 'binance', 'coinbase', 'uniswap',
-          'smart contract', 'dapp', 'nft', 'dao', 'yield', 'staking', 'mining'
+        // REQUIRE: Must have crypto/blockchain context OR be in relevant subreddit
+        const cryptoKeywords = [
+          'crypto', 'blockchain', 'bitcoin', 'ethereum', 'defi', 'web3',
+          'binance', 'coinbase', 'uniswap', 'trading', 'token', 'wallet'
         ];
         
-        const hasCryptoContext = cryptoRequiredKeywords.some(crypto => postText.includes(crypto.toLowerCase()));
-        if (!hasCryptoContext) continue;
+        const hasCryptoContext = cryptoKeywords.some(crypto => postText.includes(crypto.toLowerCase()));
+        const isRelevantSubreddit = ['ethereum', 'ethdev', 'web3', 'cryptodevs'].includes(config.name);
         
-        // REQUIRE: Technical building indicators (not just discussion)
-        const technicalIndicators = [
-          'api', 'build', 'develop', 'integrate', 'code', 'app', 'platform',
-          'dashboard', 'terminal', 'bot', 'data feed', 'service', 'endpoint',
-          'library', 'sdk', 'framework', 'infrastructure', 'architecture'
-        ];
+        // Skip if neither crypto context nor relevant subreddit  
+        if (!hasCryptoContext && !isRelevantSubreddit) continue;
         
-        const hasTechnicalContent = technicalIndicators.some(tech => postText.includes(tech.toLowerCase()));
-        if (!hasTechnicalContent) continue;
-        
-        // Combine all matched keywords
-        const allMatchedKeywords = [...relevantKeywords, ...opportunityMatches];
+        // Use the Mobula documentation services that matched
+        const allMatchedKeywords = docServiceMatches;
 
         // Calculate opportunity score
         const opportunityScore = this.calculateOpportunityScore(
@@ -332,6 +226,9 @@ export class RedditDiscoveryService {
 
         // Generate engagement suggestion (not automated response)
         const engagementSuggestion = await this.generateEngagementSuggestion(post, allMatchedKeywords);
+
+        // Add to seen posts to prevent duplicates
+        this.seenPostIds.add(post.id);
 
         opportunities.push({
           postId: post.id,

@@ -327,4 +327,69 @@ export class AppController {
       };
     }
   }
+
+  @Get('scan-reddit-save-to-notion')
+  async scanRedditAndSaveToNotion() {
+    try {
+      // Get all Reddit opportunities (bypass high-value filter since Claude API is down)
+      const allOpportunities = await this.redditService.discoverOpportunities();
+      
+      let savedCount = 0;
+      const savedOpportunities: any[] = [];
+      
+      // Save top 10 opportunities to Notion
+      for (const opp of allOpportunities.slice(0, 10)) {
+        try {
+          const pageId = await this.notionService.createOpportunity({
+            type: 'reddit_response',
+            title: `🔥 Reddit: ${opp.postTitle}`,
+            content: `**REDDIT ENGAGEMENT OPPORTUNITY**
+
+**Post:** ${opp.postTitle}
+**Subreddit:** r/${opp.subreddit}  
+**URL:** ${opp.postUrl}
+**Author:** ${opp.author}
+**Reddit Score:** ${opp.score} upvotes
+**Comments:** ${opp.commentCount}
+**Keywords Matched:** ${opp.keywords.join(', ')}
+**Opportunity Score:** ${opp.opportunityScore}/100
+
+**Manual Action Required:** Review post and provide helpful technical advice about crypto/blockchain data APIs if relevant. Focus on genuine value, not promotion.`,
+            priorityScore: opp.opportunityScore,
+            status: 'identified',
+            targetKeywords: opp.keywords,
+            competitionDifficulty: 30,
+            trafficPotential: opp.score * 10,
+            generatedAt: new Date(),
+          });
+          
+          savedCount++;
+          savedOpportunities.push({
+            title: opp.postTitle,
+            subreddit: opp.subreddit,
+            score: opp.opportunityScore,
+            url: opp.postUrl,
+            notionPageId: pageId,
+          });
+          
+        } catch (error) {
+          console.error(`Failed to save opportunity: ${opp.postTitle}`, error.message);
+        }
+      }
+      
+      return {
+        status: 'success',
+        totalOpportunitiesFound: allOpportunities.length,
+        savedToNotion: savedCount,
+        opportunities: savedOpportunities,
+        message: `Successfully saved ${savedCount} Reddit opportunities to Notion`
+      };
+      
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
 }

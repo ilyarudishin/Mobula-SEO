@@ -176,9 +176,8 @@ export class SeoOrchestratorService {
     this.logger.log('🔍 Running continuous monitoring cycle');
 
     try {
-      // Track ranking changes using both SERP and GSC data
+      // Track ranking changes using SERP data only (GSC runs once daily)
       const rankings = await this.serpService.trackKeywordRankings(this.coreKeywords.slice(0, 10));
-      const gscKeywordData = await this.gscService.trackKeywordPositions(this.coreKeywords.slice(0, 10), 7);
       
       // Look for immediate opportunities (trending topics, competitor gaps)
       const urgentOpportunities = await this.findUrgentOpportunities();
@@ -214,50 +213,59 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Reddit discovery - runs every 2 hours
-  @Cron('0 */2 * * *')
+  // Reddit discovery - runs once daily at 8 AM
+  @Cron('0 8 * * *')
   async scanRedditOpportunities(): Promise<void> {
-    this.logger.log('🔍 Scanning Reddit for NEW opportunities...');
+    this.logger.log('🔍 Daily Reddit scan for Mobula-relevant opportunities...');
 
     try {
-      const redditOpportunities = await this.redditDiscoveryService.getHighValueOpportunities();
+      const redditOpportunities = await this.redditDiscoveryService.discoverOpportunities();
       
       if (redditOpportunities.length > 0) {
-        this.logger.log(`Found ${redditOpportunities.length} NEW high-value Reddit opportunities`);
+        this.logger.log(`Found ${redditOpportunities.length} NEW Mobula-relevant Reddit opportunities`);
         
-        // Save top NEW Reddit opportunities to Notion
-        for (const opportunity of redditOpportunities.slice(0, 5)) {
-          await this.notionService.saveGeneratedContent(
-            {
-              title: `🆕 Reddit Opportunity: ${opportunity.postTitle}`,
-              content: opportunity.suggestedResponse,
+        let savedCount = 0;
+        // Save all opportunities to Notion (using the new endpoint logic)
+        for (const opportunity of redditOpportunities) {
+          try {
+            await this.notionService.createOpportunity({
+              type: 'reddit_response',
+              title: `🔥 Reddit: ${opportunity.postTitle}`,
+              content: `**REDDIT ENGAGEMENT OPPORTUNITY**
+
+**Post:** ${opportunity.postTitle}
+**Subreddit:** r/${opportunity.subreddit}  
+**URL:** ${opportunity.postUrl}
+**Author:** ${opportunity.author}
+**Reddit Score:** ${opportunity.score} upvotes
+**Comments:** ${opportunity.commentCount}
+**Keywords Matched:** ${opportunity.keywords.join(', ')}
+**Opportunity Score:** ${opportunity.opportunityScore}/100
+
+**Manual Action Required:** Review post and provide helpful technical advice about Mobula's services if relevant. Focus on genuine value, not promotion.`,
+              priorityScore: opportunity.opportunityScore,
+              status: 'identified',
               targetKeywords: opportunity.keywords,
-              qualityScore: opportunity.opportunityScore,
-              wordCount: Math.round(opportunity.suggestedResponse.length / 5),
-              metaDescription: `NEW manual engagement opportunity for ${opportunity.subreddit}: ${opportunity.postTitle.substring(0, 120)}...`,
-              tags: ['reddit', 'manual-engagement', 'new-opportunity', ...opportunity.keywords],
-            },
-            'reddit_response',
-            opportunity.opportunityScore,
-            {
-              postUrl: opportunity.postUrl,
-              subreddit: opportunity.subreddit,
-              postScore: opportunity.score,
-              commentCount: opportunity.commentCount,
-              engagementType: 'manual-monitoring',
-              foundAt: new Date().toISOString(),
-            }
-          );
+              competitionDifficulty: 30,
+              trafficPotential: opportunity.score * 10,
+              generatedAt: new Date(),
+            });
+            savedCount++;
+          } catch (error) {
+            this.logger.error(`Failed to save opportunity: ${opportunity.postTitle}`, error.message);
+          }
         }
 
-        // Only notify Slack if there are NEW opportunities
+        // Notify Slack about new opportunities
         await this.slackService.sendOpportunitiesFoundAlert({
-          count: redditOpportunities.length,
-          topOpportunity: `${redditOpportunities[0].postTitle} (${redditOpportunities[0].postUrl})`,
-          averageScore: redditOpportunities.reduce((sum, opp) => sum + opp.opportunityScore, 0) / redditOpportunities.length,
+          count: savedCount,
+          topOpportunity: `r/${redditOpportunities[0].subreddit}: ${redditOpportunities[0].postTitle}`,
+          averageScore: Math.round(redditOpportunities.reduce((sum, opp) => sum + opp.opportunityScore, 0) / redditOpportunities.length),
         });
+        
+        this.logger.log(`✅ Saved ${savedCount} new Reddit opportunities to Notion`);
       } else {
-        this.logger.log('✅ No new high-value Reddit opportunities found - no notification sent');
+        this.logger.log('✅ No new Reddit opportunities found today');
       }
     } catch (error) {
       this.logger.error('Error in Reddit opportunity scan', error.stack);
@@ -269,8 +277,8 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Blog opportunity discovery - runs daily at 10 AM
-  @Cron('0 10 * * *')
+  // Blog opportunity discovery - DISABLED (focusing only on Reddit)
+  // @Cron('0 10 * * *')
   async scanBlogOpportunities(): Promise<void> {
     this.logger.log('🔍 Scanning for blog outreach opportunities...');
 
@@ -321,8 +329,8 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Social listening scan - runs every 6 hours
-  @Cron('0 */6 * * *')
+  // Social listening scan - DISABLED (focusing only on Reddit)
+  // @Cron('0 */6 * * *')
   async scanSocialMentions(): Promise<void> {
     this.logger.log('🔍 Scanning social media for engagement opportunities...');
 
@@ -383,21 +391,18 @@ export class SeoOrchestratorService {
       const readyContent = await this.notionService.getOpportunitiesByStatus('ready_to_publish');
       const publishedContent = await this.notionService.getOpportunitiesByStatus('published');
 
-      // Get GSC performance data for the week
-      const gscKeywordData = await this.gscService.trackKeywordPositions(this.coreKeywords, 7);
-      const topQueries = await this.gscService.getTopQueries(7, 20);
-      const topPages = await this.gscService.getTopPages(7, 10);
+      // GSC data tracked separately at 7 AM daily - use cached/stored data
 
       const reportData = {
         contentCreated: readyContent.length,
         opportunitiesExecuted: publishedContent.length + readyContent.length,
         avgQualityScore: 85, // Will calculate from actual data
         topPerformingContent: publishedContent.slice(0, 5).map((item: any) => item.properties.Title?.title?.[0]?.text?.content || 'Untitled'),
-        // GSC data
-        totalClicks: topQueries.reduce((sum, q) => sum + q.clicks, 0),
-        totalImpressions: topQueries.reduce((sum, q) => sum + q.impressions, 0),
-        avgPosition: gscKeywordData.length > 0 ? gscKeywordData.reduce((sum, k) => sum + k.avgPosition, 0) / gscKeywordData.length : 0,
-        rankingImprovements: gscKeywordData.filter(k => k.avgPosition > 0 && k.avgPosition <= 10).length,
+        // GSC data available from daily 7 AM tracking - use placeholders for weekly report
+        totalClicks: 0, // Will be populated from daily GSC tracking
+        totalImpressions: 0,
+        avgPosition: 0,
+        rankingImprovements: 0,
       };
 
       await this.slackService.sendWeeklyReport({
@@ -412,8 +417,8 @@ export class SeoOrchestratorService {
         opportunitiesIdentified: readyContent.length + publishedContent.length,
         rankingImprovements: reportData.rankingImprovements,
         trafficIncrease: reportData.totalClicks,
-        topPerformingContent: topPages.slice(0, 5).map(p => p.page),
-        upcomingOpportunities: topQueries.slice(0, 10).map(q => q.query),
+        topPerformingContent: ['Data available from daily GSC tracking'],
+        upcomingOpportunities: ['Data available from daily GSC tracking'],
       });
 
     } catch (error) {
@@ -421,27 +426,36 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Health check - runs daily
-  @Cron(CronExpression.EVERY_DAY_AT_6AM)
-  async dailyHealthCheck(): Promise<void> {
-    this.logger.log('🔧 Running daily health check with GSC data');
+  // DAILY GSC TRACKING - runs once per day at 7 AM (ONLY place for GSC data)
+  @Cron('0 7 * * *')
+  async dailyGscTracking(): Promise<void> {
+    this.logger.log('📊 Running daily GSC keyword position tracking');
     
     try {
-      // Get GSC performance data for health check
-      const topQueries = await this.gscService.getTopQueries(1, 10); // Last day
-      const coreKeywordPositions = await this.gscService.trackKeywordPositions(this.coreKeywords.slice(0, 5), 1);
+      // Track keyword positions - this is the ONLY daily GSC call
+      const gscKeywordData = await this.gscService.trackKeywordPositions(this.coreKeywords.slice(0, 10), 7);
       
-      const healthData = {
-        totalContent: topQueries.length,
-        avgPosition: coreKeywordPositions.length > 0 
-          ? coreKeywordPositions.reduce((sum, k) => sum + k.avgPosition, 0) / coreKeywordPositions.length 
-          : 0,
-        totalClicks: topQueries.reduce((sum, q) => sum + q.clicks, 0),
-        improvementCount: coreKeywordPositions.filter(k => k.avgPosition > 0 && k.avgPosition <= 20).length,
-      };
+      this.logger.log(`✅ Daily GSC tracking completed: ${gscKeywordData.length} keywords tracked`);
       
-      // Send health status to Slack with actual GSC data
-      await this.slackService.sendPerformanceUpdate(healthData);
+    } catch (error) {
+      this.logger.error(`❌ Daily GSC tracking failed: ${error.message}`);
+    }
+  }
+
+  // Health check - runs daily (NO GSC calls to avoid duplicates)  
+  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  async dailyHealthCheck(): Promise<void> {
+    this.logger.log('🔧 Running daily health check (GSC data tracked separately at 7 AM)');
+    
+    try {
+      // Health check without GSC calls to avoid duplicate data
+      // Send simple health status to Slack (no GSC calls)
+      await this.slackService.sendPerformanceUpdate({
+        totalContent: this.executionCount,
+        avgPosition: 0, // Will be updated by daily GSC tracking at 7 AM
+        totalClicks: 0,
+        improvementCount: 0
+      });
       
       // Verify API connections
       await this.verifyApiConnections();

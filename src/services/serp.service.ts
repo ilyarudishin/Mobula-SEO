@@ -159,8 +159,8 @@ export class SerpService {
             const featuredSnippet = retryData.answer_box ? {
               title: retryData.answer_box.title || '',
               snippet: retryData.answer_box.snippet || retryData.answer_box.answer || '',
-              source: retryData.answer_box.displayed_link || '',
-            } : null;
+              link: retryData.answer_box.link || retryData.answer_box.displayed_link || '',
+            } : undefined;
 
             const peopleAlsoAsk = (retryData.people_also_ask || []).map((item: any) => item.question);
             const relatedSearches = (retryData.related_searches || []).map((item: any) => item.query);
@@ -468,6 +468,20 @@ export class SerpService {
     return Object.keys(competitionHierarchy).find(
       key => competitionHierarchy[key as keyof typeof competitionHierarchy] === maxLevel
     ) as 'low' | 'medium' | 'high';
+  }
+
+  private identifyCompetitors(topResults: SearchResult[]): {
+    domain: string;
+    position: number;
+    title: string;
+  }[] {
+    return topResults
+      .filter(result => this.competitors.some(comp => result.domain.includes(comp)))
+      .map(result => ({
+        domain: result.domain,
+        position: result.position,
+        title: result.title,
+      }));
   }
 
   private sleep(ms: number): Promise<void> {
