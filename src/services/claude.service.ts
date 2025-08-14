@@ -109,11 +109,12 @@ TECHNICAL ACCURACY:
 - Provide real-world implementation examples
 - Address common edge cases and considerations
 
-Mobula Context:
-- Low-latency blockchain APIs (REST, GraphQL, WebSocket)
-- Covers 300+ blockchains with real-time data
-- Serves developers building trading terminals, DeFi protocols, analytics platforms
-- Key competitors: Alchemy, Codex, Goldsky
+Mobula Context - CRYPTO/BLOCKCHAIN FOCUS ONLY:
+- Blockchain & crypto data APIs (REST, GraphQL, WebSocket)
+- Real-time crypto prices, token data, DeFi metrics across 300+ blockchains
+- Serves crypto developers building: trading bots, DeFi protocols, crypto analytics, Web3 dApps
+- Key crypto competitors: CoinGecko API, CoinMarketCap API, Moralis, Alchemy, The Graph
+- NEVER mention generic data infrastructure - ALWAYS crypto/blockchain specific
 
 Format your response as JSON with these fields:
 {
@@ -178,11 +179,12 @@ ${request.additionalContext ? `CONTEXT: ${request.additionalContext}` : ''}
 
 ${contentInstructions}
 
-MOBULA INTEGRATION (if relevant):
-- Mention Mobula naturally at 70-80% through content as "one option"
-- Include specific code example with Mobula API
-- Always suggest alternatives alongside Mobula
-- No promotional language
+MOBULA INTEGRATION (CRYPTO CONTEXT REQUIRED):
+- ONLY mention Mobula for crypto/blockchain API use cases
+- Mention naturally at 70-80% through content as "one crypto data solution"
+- Include specific crypto API code example (token prices, DeFi data, etc.)
+- Always suggest crypto-specific alternatives (CoinGecko, Moralis, The Graph)
+- NO generic data infrastructure mentions - CRYPTO ONLY
 
 RESPONSE FORMAT - CRITICAL:
 Return ONLY valid JSON. No markdown blocks, no explanations, no extra text.

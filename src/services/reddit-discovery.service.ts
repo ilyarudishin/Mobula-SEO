@@ -83,12 +83,14 @@ export class RedditDiscoveryService {
     }
   ];
 
-  // FOCUSED on DATA APIs & TRADING TERMINAL needs
+  // STRICT: ONLY crypto/blockchain data APIs - NO generic data infrastructure
   private readonly opportunityKeywords = [
-    // Data API Needs
-    'price api', 'market data api', 'crypto data api', 'trading data api', 'blockchain data api',
-    'real-time price', 'price feed', 'market feed', 'crypto prices', 'token prices',
-    'historical data', 'ohlc data', 'candlestick data', 'volume data', 'market cap data',
+    // Crypto-specific API Needs
+    'crypto api', 'blockchain api', 'token api', 'defi api', 'web3 api',
+    'bitcoin api', 'ethereum api', 'solana api', 'polygon api', 'avalanche api',
+    'crypto price api', 'token price api', 'blockchain data api', 'crypto market data',
+    'real-time crypto price', 'crypto price feed', 'token price feed', 'crypto websocket',
+    'historical crypto data', 'crypto ohlc', 'token ohlc', 'crypto volume data', 'token market cap',
     
     // Trading Terminal APIs
     'trading terminal', 'trading platform', 'trading interface', 'crypto terminal',
@@ -260,6 +262,53 @@ export class RedditDiscoveryService {
         
         // Must match at least one keyword from either list
         if (relevantKeywords.length === 0 && opportunityMatches.length === 0) continue;
+        
+        // STRICT CRYPTO VALIDATION: Reject spam, ads, and non-crypto content
+        const rejectKeywords = [
+          // Trading/Investment Advice & Speculation
+          'buy', 'sell', 'hold', 'moon', 'pump', 'dump', 'investment advice',
+          'price prediction', 'bull market', 'bear market', 'to the moon',
+          'diamond hands', 'paper hands', 'hodl', 'when lambo', 'wen moon',
+          'financial advice', 'not financial advice', 'dyor', 'nfa', 'wagmi', 'ngmi',
+          
+          // Spam/Advertisements/Self-Promotion
+          'check out my', 'follow me', 'subscribe', 'upvote this', 'like this',
+          'dm me', 'telegram me', 'discord link', 'click here', 'sign up now',
+          'referral', 'affiliate', 'promo code', 'discount', 'free coins',
+          'airdrop', 'giveaway', 'contest', 'lottery', 'presale',
+          
+          // Generic non-crypto data infrastructure
+          'sql database', 'mysql', 'postgres', 'mongodb', 'redis cache',
+          'aws api', 'google cloud api', 'azure api', 'weather api', 'news api',
+          'stock market api', 'forex api', 'traditional finance', 'bank api',
+          
+          // Meme/Non-technical content
+          'meme coin', 'joke token', 'funny story', 'lol', 'haha',
+          'this is the way', 'ser', 'gm ser', 'gn ser', 'anon'
+        ];
+        
+        // Reject posts containing spam/non-crypto keywords
+        if (rejectKeywords.some(reject => postText.includes(reject.toLowerCase()))) continue;
+        
+        // REQUIRE: Must be crypto/blockchain specific (not generic data)
+        const cryptoRequiredKeywords = [
+          'crypto', 'blockchain', 'bitcoin', 'ethereum', 'token', 'defi', 'web3',
+          'solana', 'polygon', 'avalanche', 'binance', 'coinbase', 'uniswap',
+          'smart contract', 'dapp', 'nft', 'dao', 'yield', 'staking', 'mining'
+        ];
+        
+        const hasCryptoContext = cryptoRequiredKeywords.some(crypto => postText.includes(crypto.toLowerCase()));
+        if (!hasCryptoContext) continue;
+        
+        // REQUIRE: Technical building indicators (not just discussion)
+        const technicalIndicators = [
+          'api', 'build', 'develop', 'integrate', 'code', 'app', 'platform',
+          'dashboard', 'terminal', 'bot', 'data feed', 'service', 'endpoint',
+          'library', 'sdk', 'framework', 'infrastructure', 'architecture'
+        ];
+        
+        const hasTechnicalContent = technicalIndicators.some(tech => postText.includes(tech.toLowerCase()));
+        if (!hasTechnicalContent) continue;
         
         // Combine all matched keywords
         const allMatchedKeywords = [...relevantKeywords, ...opportunityMatches];
