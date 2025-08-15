@@ -24,6 +24,7 @@ export class SeoOrchestratorService {
   private readonly logger = new Logger(SeoOrchestratorService.name);
   private isExecuting = false;
   private executionCount = 0;
+  private readonly processedOpportunities = new Set<string>();
   
   // Core keywords to monitor and execute on
   private readonly coreKeywords = [
@@ -182,14 +183,22 @@ export class SeoOrchestratorService {
       // Look for immediate opportunities (trending topics, competitor gaps)
       const urgentOpportunities = await this.findUrgentOpportunities();
       
-      if (urgentOpportunities.length > 0) {
-        this.logger.log(`Found ${urgentOpportunities.length} urgent opportunities`);
+      // Filter out already processed opportunities to prevent duplicates
+      const newUrgentOpportunities = urgentOpportunities.filter(opp => 
+        !this.processedOpportunities.has(opp.keyword)
+      );
+      
+      if (newUrgentOpportunities.length > 0) {
+        this.logger.log(`Found ${newUrgentOpportunities.length} NEW urgent opportunities (${urgentOpportunities.length - newUrgentOpportunities.length} already processed)`);
         
         // Execute on the highest priority urgent opportunity
-        const topUrgent = urgentOpportunities[0];
+        const topUrgent = newUrgentOpportunities[0];
         const content = await this.executeOpportunity(topUrgent);
         
         if (content) {
+          // Mark as processed to prevent future duplicates
+          this.processedOpportunities.add(topUrgent.keyword);
+          
           await this.notionService.saveGeneratedContent(
             content,
             this.getContentType(topUrgent),
@@ -203,6 +212,8 @@ export class SeoOrchestratorService {
             averageScore: topUrgent.opportunityScore,
           });
         }
+      } else if (urgentOpportunities.length > 0) {
+        this.logger.log(`✅ Found ${urgentOpportunities.length} urgent opportunities, but all already processed (no duplicates sent)`);
       }
 
       // Note: Performance data (GSC) is updated separately once daily at 7 AM to avoid duplicates
@@ -502,17 +513,21 @@ ${opportunity.suggestedResponse}
     this.logger.log('🔧 Running daily health check (GSC data tracked separately at 7 AM)');
     
     try {
-      // Health check without GSC calls to avoid duplicate data
-      // Send simple health status to Slack (no GSC calls)
-      await this.slackService.sendPerformanceUpdate({
-        totalContent: this.executionCount,
-        avgPosition: 0, // Will be updated by daily GSC tracking at 7 AM
-        totalClicks: 0,
-        improvementCount: 0
-      });
-      
       // Verify API connections
       await this.verifyApiConnections();
+      
+      // Only send performance update if we have meaningful data (content > 0)
+      // Otherwise skip to avoid spam with zeros
+      if (this.executionCount > 0) {
+        await this.slackService.sendPerformanceUpdate({
+          totalContent: this.executionCount,
+          avgPosition: 0, // Will be updated by daily GSC tracking at 7 AM
+          totalClicks: 0,
+          improvementCount: 0
+        });
+      } else {
+        this.logger.log('✅ Daily health check completed - no performance update sent (no content generated yet)');
+      }
       
     } catch (error) {
       this.logger.error('Health check failed', error.stack);
@@ -625,13 +640,19 @@ ${opportunity.suggestedResponse}
 
   private async findUrgentOpportunities(): Promise<KeywordOpportunity[]> {
     // Look for trending keywords or sudden competitor movements
+    const currentYear = new Date().getFullYear();
     const trendingKeywords = [
-      'blockchain API trends 2024',
+      `blockchain API trends ${currentYear}`,
       'new DeFi protocols',
       'crypto market data updates',
+      'web3 infrastructure changes',
+      'blockchain API performance',
     ];
     
-    return await this.serpService.findContentOpportunities(trendingKeywords);
+    const opportunities = await this.serpService.findContentOpportunities(trendingKeywords);
+    
+    // Only return high-scoring opportunities to reduce noise
+    return opportunities.filter(opp => opp.opportunityScore >= 85);
   }
 
   private async monitorCompetitors(): Promise<void> {

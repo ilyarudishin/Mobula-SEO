@@ -344,6 +344,118 @@ export class AppController {
     }
   }
 
+  @Get('test-content-generation')
+  async testContentGeneration() {
+    try {
+      // Test the main content generation pipeline
+      const testKeyword = 'blockchain API comparison';
+      
+      // Test SERP analysis
+      const serpAnalysis = await this.serpService.analyzeSerpForKeyword(testKeyword);
+      
+      // Test content generation with Claude
+      const content = await this.claudeService.generateContent({
+        type: 'blog_article',
+        topic: testKeyword,
+        keywords: ['blockchain API', 'crypto data API', 'web3 infrastructure'],
+        targetAudience: 'blockchain developers',
+        competitorAnalysis: `Top competitors: ${serpAnalysis.topResults.slice(0, 3).map(r => r.domain).join(', ')}`,
+        additionalContext: 'Focus on technical comparison of features, performance, and pricing for developers choosing blockchain data providers.'
+      });
+
+      return {
+        status: 'success',
+        testKeyword,
+        serpData: {
+          totalResults: serpAnalysis.totalResults,
+          topCompetitors: serpAnalysis.topResults.slice(0, 5).map(r => ({
+            domain: r.domain,
+            title: r.title,
+            position: r.position
+          })),
+          peopleAlsoAsk: serpAnalysis.peopleAlsoAsk.slice(0, 3)
+        },
+        generatedContent: {
+          title: content.title,
+          wordCount: content.wordCount,
+          qualityScore: content.qualityScore,
+          contentPreview: content.content.substring(0, 300) + '...',
+          tags: content.tags
+        },
+        message: 'Content generation pipeline working correctly'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message,
+        message: 'Content generation pipeline failed'
+      };
+    }
+  }
+
+  @Get('generate-save-article')
+  async generateAndSaveArticle() {
+    try {
+      // Test full pipeline: SERP research + content generation + Notion save
+      const testKeyword = 'best crypto API for developers 2025';
+      
+      // Step 1: SERP analysis for keyword research
+      const serpAnalysis = await this.serpService.analyzeSerpForKeyword(testKeyword);
+      
+      // Step 2: Generate high-quality article content 
+      const content = await this.claudeService.generateContent({
+        type: 'blog_article',
+        topic: testKeyword,
+        keywords: ['crypto API', 'blockchain API', 'web3 API', 'developer tools'],
+        targetAudience: 'blockchain developers and technical decision makers',
+        competitorAnalysis: `Main competitors: ${serpAnalysis.topResults.slice(0, 5).map(r => `${r.domain} (#${r.position})`).join(', ')}. Must differentiate from existing content.`,
+        additionalContext: 'Create comprehensive guide covering features, pricing, rate limits, and real developer use cases. Include code examples and technical comparisons. Position Mobula as a competitive option.'
+      });
+
+      // Step 3: Save to Notion with full metadata
+      const notionPageId = await this.notionService.saveGeneratedContent(
+        content,
+        'blog_article',
+        85, // high priority score
+        {
+          testGeneration: true,
+          keyword: testKeyword,
+          serpData: serpAnalysis.topResults.slice(0, 3),
+          generatedAt: new Date().toISOString(),
+          contentType: 'technical_comparison'
+        }
+      );
+
+      return {
+        status: 'success',
+        pipeline: 'SERP Research → Content Generation → Notion Save',
+        testKeyword,
+        serpInsights: {
+          totalResults: serpAnalysis.totalResults,
+          competitorDomains: serpAnalysis.topResults.slice(0, 5).map(r => r.domain),
+          peopleAlsoAsk: serpAnalysis.peopleAlsoAsk.slice(0, 3)
+        },
+        generatedContent: {
+          title: content.title,
+          wordCount: content.wordCount,
+          qualityScore: content.qualityScore,
+          metaDescription: content.metaDescription,
+          tags: content.tags,
+          contentPreview: content.content.substring(0, 400) + '...'
+        },
+        notionPageId,
+        notionUrl: `https://notion.so/${notionPageId.replace(/-/g, '')}`,
+        message: 'Full content generation pipeline executed successfully - check Notion for the complete article!'
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message,
+        pipeline: 'Failed during content generation pipeline'
+      };
+    }
+  }
+
   @Get('scan-reddit-save-to-notion')
   async scanRedditAndSaveToNotion() {
     try {
