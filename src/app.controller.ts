@@ -9,6 +9,7 @@ import { GoogleSearchConsoleService } from './services/google-search-console.ser
 import { RedditDiscoveryService } from './services/reddit-discovery.service';
 import { BlogDiscoveryService } from './services/blog-discovery.service';
 import { SocialListeningService } from './services/social-listening.service';
+import { RedditResponseGeneratorService } from './services/reddit-response-generator.service';
 
 @Controller()
 export class AppController {
@@ -23,6 +24,7 @@ export class AppController {
     private readonly redditService: RedditDiscoveryService,
     private readonly blogService: BlogDiscoveryService,
     private readonly socialService: SocialListeningService,
+    private readonly redditResponseGenerator: RedditResponseGeneratorService,
   ) {}
 
   @Get()
@@ -521,6 +523,87 @@ ${opp.suggestedResponse}
         message: `Successfully saved ${savedCount} Reddit opportunities to Notion`
       };
       
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
+  @Get('generate-reddit-responses')
+  async generateRedditResponses() {
+    try {
+      // Sample Reddit opportunities (would normally come from Notion)
+      const sampleOpportunities = [
+        {
+          postTitle: "Best API for getting Solana token data?",
+          postContent: "I'm building a portfolio tracker and need to get token metadata, prices, and balances for SPL tokens. What APIs do you recommend? Currently using Alchemy but their Solana support is limited.",
+          subreddit: "solana",
+          author: "crypto_dev_2024",
+          url: "https://reddit.com/r/solana/comments/example1",
+          keywords: ["solana api", "token data", "portfolio", "spl tokens", "metadata"]
+        },
+        {
+          postTitle: "How to get historical price data for DeFi tokens?",
+          postContent: "Working on analytics dashboard and need OHLC data for various DeFi tokens across different chains. CoinGecko API is rate limiting me. Any alternatives?",
+          subreddit: "defi",
+          author: "defi_builder",
+          url: "https://reddit.com/r/defi/comments/example2",
+          keywords: ["historical price", "ohlc", "defi tokens", "multi-chain", "rate limits"]
+        },
+        {
+          postTitle: "Need wallet tracking API for multiple chains",
+          postContent: "Building a tool to track wallet performance across Ethereum, Polygon, BSC. Need transaction history, P&L calculations, current balances. What do you use?",
+          subreddit: "ethdev",
+          author: "web3_developer",
+          url: "https://reddit.com/r/ethdev/comments/example3",
+          keywords: ["wallet tracking", "multi-chain", "transaction history", "pnl", "portfolio analytics"]
+        }
+      ];
+
+      const responses: any[] = [];
+
+      for (const opportunity of sampleOpportunities) {
+        try {
+          const response = await this.redditResponseGenerator.generateResponse({
+            postTitle: opportunity.postTitle,
+            postContent: opportunity.postContent,
+            subreddit: opportunity.subreddit,
+            author: opportunity.author,
+            url: opportunity.url,
+            keywords: opportunity.keywords,
+          });
+
+          responses.push({
+            originalPost: {
+              title: opportunity.postTitle,
+              subreddit: opportunity.subreddit,
+              url: opportunity.url,
+            },
+            generatedResponse: response,
+            status: 'ready_for_review'
+          });
+
+        } catch (error) {
+          responses.push({
+            originalPost: {
+              title: opportunity.postTitle,
+              subreddit: opportunity.subreddit,
+            },
+            error: error.message,
+            status: 'failed'
+          });
+        }
+      }
+
+      return {
+        status: 'success',
+        responsesGenerated: responses.length,
+        responses,
+        message: `Generated ${responses.length} Reddit responses following your guidelines`
+      };
+
     } catch (error) {
       return {
         status: 'error',

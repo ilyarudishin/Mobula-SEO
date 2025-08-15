@@ -14,6 +14,7 @@ import { GoogleSearchConsoleService } from './services/google-search-console.ser
 import { RedditDiscoveryService } from './services/reddit-discovery.service';
 import { BlogDiscoveryService } from './services/blog-discovery.service';
 import { SocialListeningService } from './services/social-listening.service';
+import { RedditResponseGeneratorService } from './services/reddit-response-generator.service';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SocialListeningService } from './services/social-listening.service';
     RedditDiscoveryService,
     BlogDiscoveryService,
     SocialListeningService,
+    RedditResponseGeneratorService,
   ],
 })
 export class AppModule {}
