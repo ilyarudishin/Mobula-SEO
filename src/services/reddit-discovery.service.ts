@@ -31,78 +31,194 @@ export class RedditDiscoveryService {
   private readonly seenPostIds = new Set<string>();
   private lastScanTimestamp: Date | null = null;
   
-  // SEARCH-TARGETED: Use search terms that find API discussions from the last year
+  // COMPREHENSIVE MOBULA COVERAGE: Capture ALL conversations related to Mobula's services
   private readonly subredditConfigs: SubredditConfig[] = [
     {
       name: 'ethdev',
-      keywords: ['"what do you use"', '"which api"', '"recommend api"', 'coingecko', 'moralis', 'api', '"data source"', 'endpoint'],
-      maxPostsPerScan: 30,
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'token', 'metadata', 'portfolio', 'balance', 'transaction', 'multi-chain', 'websocket', 'real-time', 'octopus', 'metacore'],
+      maxPostsPerScan: 50,
       minScore: 1,
     },
     {
       name: 'ethereum', 
-      keywords: ['"best api"', '"what api"', 'coingecko', 'moralis', 'alchemy', 'api', '"price data"', 'endpoint'],
-      maxPostsPerScan: 30,
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'token', 'dapp', 'web3', 'defi', 'portfolio', 'balance', 'transaction', 'multi-chain'],
+      maxPostsPerScan: 50,
       minScore: 1,
     },
     {
       name: 'solana',
-      keywords: ['"what api"', '"which api"', '"recommend api"', 'coingecko', 'moralis', 'alchemy', '"data api"', 'api', 'endpoint', '"price feed"'],
-      maxPostsPerScan: 30,
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'token', 'portfolio', 'balance', 'transaction', 'multi-chain', 'cross-chain', 'real-time'],
+      maxPostsPerScan: 50,
       minScore: 1,
     },
     {
       name: 'cryptocurrency',
-      keywords: ['"what do you use"', 'api', 'coingecko', 'coinmarketcap', '"data source"', 'endpoint', '"price api"'],
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'portfolio', 'token', 'crypto', 'trading', 'coingecko', 'coinmarketcap', 'real-time'],
+      maxPostsPerScan: 40,
+      minScore: 1,
+    },
+    {
+      name: 'defi',
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'portfolio', 'token', 'protocol', 'yield', 'liquidity', 'tvl', 'multi-chain'],
+      maxPostsPerScan: 40,
+      minScore: 1,
+    },
+    {
+      name: 'web3',
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'token', 'dapp', 'multi-chain', 'cross-chain', 'metadata', 'portfolio'],
+      maxPostsPerScan: 40,
+      minScore: 1,
+    },
+    {
+      name: 'CryptoCurrency',
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'portfolio', 'token', 'crypto', 'trading', 'charts', 'real-time'],
+      maxPostsPerScan: 30,
+      minScore: 2,
+    },
+    {
+      name: 'Bitcoin',
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'transaction', 'portfolio', 'multi-chain', 'cross-chain'],
       maxPostsPerScan: 25,
       minScore: 2,
     },
     {
-      name: 'defi',
-      keywords: ['api', '"price data"', 'coingecko', 'moralis', '"data feed"', 'endpoint', '"what do you use"'],
-      maxPostsPerScan: 20,
-      minScore: 2,
+      name: 'CryptoTechnology',
+      keywords: ['api', 'data', 'blockchain', 'multi-chain', 'cross-chain', 'wallet', 'transaction', 'metadata', 'real-time'],
+      maxPostsPerScan: 25,
+      minScore: 1,
     },
     {
-      name: 'web3',
-      keywords: ['api', '"which api"', 'coingecko', 'moralis', 'alchemy', '"data source"', 'endpoint'],
+      name: 'cryptodevs',
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'token', 'dapp', 'sdk', 'multi-chain', 'metadata'],
+      maxPostsPerScan: 35,
+      minScore: 1,
+    },
+    {
+      name: 'programming',
+      keywords: ['crypto api', 'blockchain api', 'wallet api', 'token data', 'crypto data', 'market data api'],
       maxPostsPerScan: 20,
-      minScore: 2,
+      minScore: 3,
+    },
+    {
+      name: 'webdev',
+      keywords: ['crypto api', 'blockchain api', 'web3 api', 'token data', 'wallet data', 'market data'],
+      maxPostsPerScan: 20,
+      minScore: 3,
     }
   ];
 
-  // MOBULA DOCS ONLY: Must match exact services from Mobula documentation
+  // COMPREHENSIVE MOBULA SERVICES: All services from Mobula documentation
   private readonly mobulaDocServices = [
-    // Market Data API (Octopus) - Mobula's core offering
-    'price api', 'market data', 'crypto prices', 'token prices', 'trading pairs',
-    'price feed', 'market cap', 'volume data', 'ohlc', 'price chart',
+    // MARKET DATA API (OCTOPUS ENGINE) - Core offering
+    'price api', 'market data', 'crypto prices', 'token prices', 'asset prices',
+    'price feed', 'market cap', 'volume data', 'ohlc', 'price chart', 'candlestick',
+    'trading pairs', 'market pairs', 'price history', 'historical data',
+    'octopus engine', 'octopus', 'pricing engine', 'price accuracy', 'price latency',
+    '5 second updates', 'real-time prices', 'live prices', 'current price',
     
-    // Wallet Data API - Mobula's wallet analytics
-    'wallet data', 'wallet api', 'transaction history', 'wallet activity',
-    'token holdings', 'wallet balance', 'portfolio data', 'defi positions',
+    // WALLET DATA API - Comprehensive wallet analytics  
+    'wallet data', 'wallet api', 'wallet portfolio', 'portfolio api',
+    'transaction history', 'wallet activity', 'wallet transactions',
+    'token holdings', 'wallet balance', 'portfolio data', 'wallet explorer',
+    'defi positions', 'wallet tracking', 'address analysis', 'wallet analytics',
+    'pnl calculation', 'profit loss', 'average bought price', 'cost basis',
+    'historical balances', 'balance history', 'usd pricing', 'enriched data',
+    '30+ chains', 'evm blockchains', 'unified api', 'multi-chain wallet',
     
-    // Metadata API (Metacore) - Mobula's token metadata
-    'token metadata', 'token info', 'token data', 'contract data',
-    'token details', 'asset metadata',
+    // METADATA API (METACORE) - Token metadata and information
+    'token metadata', 'token info', 'token data', 'contract data', 'asset data',
+    'token details', 'asset metadata', 'metacore', 'token information',
+    'logos', 'websites', 'socials', 'social links', 'token socials',
+    'cross-checked data', 'coin listing', 'reputation systems', 'hourly updates',
+    'new assets', 'token discovery', 'asset discovery',
     
-    // Multi-chain Data - Mobula's 30+ chains
+    // MULTI-CHAIN SUPPORT - 50+ blockchains
     'multi chain', 'cross chain', 'multiple blockchains', 'all chains',
+    'unified access', '50+ blockchains', 'ethereum', 'solana', 'polygon',
+    'bnb chain', 'avalanche', 'arbitrum', 'optimism', 'base', 'fantom',
+    'single api', 'multi-blockchain', 'cross-chain data', 'chain agnostic',
     
-    // WebSocket/Real-time - Mobula's streaming
-    'websocket', 'real time', 'live data', 'streaming',
+    // REAL-TIME & STREAMING - WebSockets and live data
+    'websocket', 'real time', 'live data', 'streaming', 'real-time streaming',
+    'webhooks', 'instant updates', 'push notifications', 'live feed',
+    'streaming api', 'websocket api', 'real-time updates', 'live updates',
     
-    // Common API search terms that developers use
-    'json api', 'rest api', 'api call', 'api request', 'api response', 'api key',
-    'rate limit', 'api documentation', 'api pricing', 'free api', 'paid api',
+    // ADVANCED FEATURES - Technical capabilities
+    'graphql api', 'rest api', 'sql access', 'sql interface', 'database access',
+    'the graph', 'ponder', 'octoflow', 'indexing solutions', 'cloud services',
+    'token vesting', 'vesting schedules', 'unlock events', 'vesting data',
+    'advanced indexing', 'custom queries', 'flexible queries',
     
-    // Competitor mentions (perfect opportunities)
+    // DEVELOPER EXPERIENCE - Tools and integration
+    'sdk', 'libraries', 'code samples', 'documentation', 'tutorials',
+    'api integration', 'developer tools', 'programming languages',
+    'well-maintained', 'simple interfaces', 'integration process',
+    'api dashboard', 'free tier', 'generous free tier', 'production ready',
+    
+    // COMMON API TERMS - What developers search for
+    'json api', 'rest api', 'graphql', 'api call', 'api request', 'api response', 
+    'api key', 'api keys', 'authentication', 'rate limit', 'rate limiting',
+    'api documentation', 'api docs', 'api pricing', 'free api', 'paid api',
+    'api endpoint', 'endpoints', 'data provider', 'data source', 'data feed',
+    'blockchain data', 'crypto data', 'web3 data', 'defi data',
+    
+    // COMPETITOR ALTERNATIVES - Perfect opportunities
     'coingecko api', 'coinmarketcap api', 'moralis api', 'alchemy api',
-    'coingecko', 'coinmarketcap', 'moralis', 'alchemy'
+    'coingecko', 'coinmarketcap', 'moralis', 'alchemy', 'infura',
+    'alternative to', 'better than', 'replace', 'switch from', 'migrate from',
+    'vs coingecko', 'vs moralis', 'vs alchemy', 'comparison',
+    
+    // PROBLEM/SOLUTION TERMS - Pain points Mobula solves
+    'expensive api', 'costly api', 'rate limited', 'slow api', 'unreliable',
+    'incomplete data', 'missing data', 'inaccurate prices', 'delayed data',
+    'complex integration', 'difficult setup', 'poor documentation',
+    'limited chains', 'single chain', 'no multi-chain', 'chain specific',
+    'save money', 'cost effective', 'affordable', 'budget friendly',
+    
+    // USE CASES - What people build with APIs
+    'trading bot', 'portfolio tracker', 'dapp', 'dashboard', 'analytics',
+    'price tracking', 'wallet tracking', 'defi analytics', 'yield farming',
+    'arbitrage', 'market making', 'automated trading', 'crypto app',
+    'blockchain app', 'web3 app', 'crypto platform', 'defi platform'
   ];
 
-  // REQUIRE: Posts must contain both a question word AND development context
-  private readonly questionWords = ['how', 'what', 'which', 'where', 'who', 'why', 'when', 'help', 'need', 'looking for', 'recommend', 'suggest', 'advice', 'anyone', 'does anyone', 'thoughts', 'opinions', 'experience', 'best way', 'alternative'];
-  private readonly buildingWords = ['build', 'create', 'develop', 'make', 'implement', 'integrate', 'code', 'program', 'api', 'bot', 'dashboard', 'app', 'platform', 'trading', 'project', 'solution', 'tool', 'service', 'data', 'feed', 'source'];
+  // CAPTURE ALL RELEVANT CONVERSATION TYPES - Expanded context words
+  private readonly questionWords = [
+    // Questions
+    'how', 'what', 'which', 'where', 'who', 'why', 'when',
+    // Help requests  
+    'help', 'need', 'looking for', 'searching for', 'trying to find',
+    // Recommendations
+    'recommend', 'suggest', 'advice', 'opinion', 'thoughts',
+    // Community queries
+    'anyone', 'does anyone', 'has anyone', 'anybody',
+    // Comparisons
+    'best', 'better', 'compare', 'comparison', 'vs', 'versus',
+    // Alternatives  
+    'alternative', 'instead of', 'replace', 'switch', 'migrate',
+    // Problems
+    'issue', 'problem', 'trouble', 'struggling', 'difficulty',
+    // Experience sharing
+    'experience', 'tried', 'using', 'worked with', 'tested'
+  ];
+  
+  private readonly buildingWords = [
+    // Development
+    'build', 'create', 'develop', 'make', 'implement', 'integrate',
+    'code', 'coding', 'program', 'programming', 'script', 'scripting',
+    // Projects
+    'project', 'app', 'application', 'platform', 'website', 'site',
+    'dapp', 'decentralized app', 'web3 app', 'crypto app',
+    // Tools & Services
+    'api', 'service', 'tool', 'solution', 'system', 'framework',
+    'library', 'package', 'module', 'sdk', 'interface',
+    // Specific builds
+    'bot', 'trading bot', 'dashboard', 'tracker', 'portfolio tracker',
+    'analytics', 'monitoring', 'alert', 'notification',
+    // Data & feeds
+    'data', 'feed', 'source', 'provider', 'endpoint', 'query',
+    'database', 'storage', 'cache', 'index', 'search'
+  ];
 
   constructor(
     private configService: ConfigService,
@@ -184,7 +300,7 @@ export class RedditDiscoveryService {
         // Skip if post score is too low
         if (post.score < config.minScore) continue;
 
-        // ULTRA-STRICT: Post must be a development question about APIs/building
+        // COMPREHENSIVE FILTERING: Capture all Mobula-relevant conversations
         const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
         
         // REQUIREMENT 1: Must match services from Mobula's documentation
@@ -193,10 +309,16 @@ export class RedditDiscoveryService {
         );
         if (docServiceMatches.length === 0) continue;
 
-        // REQUIREMENT 2: Must be asking for help or building something
+        // REQUIREMENT 2: Must show engagement intent (questions OR building OR problems OR experience)
         const hasQuestionWord = this.questionWords.some(word => postText.includes(word));
         const hasBuildingContext = this.buildingWords.some(word => postText.includes(word));
-        if (!hasQuestionWord && !hasBuildingContext) continue;
+        
+        // More inclusive: Either asking questions OR building something OR discussing solutions
+        if (!hasQuestionWord && !hasBuildingContext) {
+          // Allow posts that discuss problems or share experiences even without explicit question words
+          const hasRelevantDiscussion = ['discussion', 'sharing', 'feedback', 'review', 'comparison', 'analysis'].some(word => postText.includes(word));
+          if (!hasRelevantDiscussion) continue;
+        }
         
         // SIMPLIFIED SPAM FILTER: Reject obvious spam/memes/investment advice
         const rejectKeywords = [
@@ -209,17 +331,32 @@ export class RedditDiscoveryService {
         // Reject posts containing spam keywords
         if (rejectKeywords.some(reject => postText.includes(reject.toLowerCase()))) continue;
         
-        // REQUIRE: Must have crypto/blockchain context OR be in relevant subreddit
+        // EXPANDED CRYPTO/BLOCKCHAIN CONTEXT - Include all relevant terms
         const cryptoKeywords = [
-          'crypto', 'blockchain', 'bitcoin', 'ethereum', 'defi', 'web3',
-          'binance', 'coinbase', 'uniswap', 'trading', 'token', 'wallet'
+          // Core crypto terms
+          'crypto', 'cryptocurrency', 'blockchain', 'bitcoin', 'ethereum', 'solana',
+          'defi', 'web3', 'nft', 'token', 'coin', 'digital asset',
+          // Platforms & protocols  
+          'binance', 'coinbase', 'uniswap', 'compound', 'aave', 'makerdao',
+          'polygon', 'arbitrum', 'optimism', 'avalanche', 'fantom', 'bsc',
+          // Activities & tools
+          'trading', 'swap', 'dex', 'cex', 'wallet', 'staking', 'yield',
+          'liquidity', 'pool', 'farm', 'mining', 'validator', 'node',
+          // Technical terms
+          'smart contract', 'dapp', 'protocol', 'consensus', 'hash',
+          'decentralized', 'distributed', 'peer-to-peer', 'trustless'
         ];
         
         const hasCryptoContext = cryptoKeywords.some(crypto => postText.includes(crypto.toLowerCase()));
-        const isRelevantSubreddit = ['ethereum', 'ethdev', 'solana', 'web3', 'defi'].includes(config.name);
+        const isRelevantSubreddit = [
+          'ethereum', 'ethdev', 'solana', 'web3', 'defi', 'cryptocurrency', 
+          'bitcoin', 'cryptotechnology', 'cryptodevs', 'programming', 'webdev'
+        ].includes(config.name.toLowerCase());
         
-        // Skip if neither crypto context nor relevant subreddit  
-        if (!hasCryptoContext && !isRelevantSubreddit) continue;
+        // More inclusive: If we're in a crypto subreddit OR have crypto context, allow it
+        // For programming subreddits, require explicit crypto context
+        if (!isRelevantSubreddit && !hasCryptoContext) continue;
+        if (['programming', 'webdev'].includes(config.name.toLowerCase()) && !hasCryptoContext) continue;
         
         // Use the Mobula documentation services that matched
         const allMatchedKeywords = docServiceMatches;
@@ -231,8 +368,8 @@ export class RedditDiscoveryService {
           config
         );
 
-        // Quality threshold - focus on genuinely valuable opportunities
-        if (opportunityScore < 55) continue;
+        // Lower quality threshold to capture more conversations
+        if (opportunityScore < 45) continue;
 
         // CRITICAL: Filter out posts older than 1 year (stale opportunities)
         const postAge = Date.now() - (post.created_utc * 1000);
