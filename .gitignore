@@ -74,3 +74,6 @@ google-credentials.json
 # Temporary files
 tmp/
 temp/
+
+# Runtime deduplication data (should not be tracked in git)
+processed-opportunities.json
