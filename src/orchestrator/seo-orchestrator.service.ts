@@ -24,7 +24,7 @@ export class SeoOrchestratorService {
   private readonly logger = new Logger(SeoOrchestratorService.name);
   private isExecuting = false;
   private executionCount = 0;
-  private readonly processedOpportunities = new Set<string>();
+  private readonly processedOpportunities = new Map<string, Date>(); // Track with timestamp
   
   // Core keywords to monitor and execute on
   private readonly coreKeywords = [
@@ -177,27 +177,32 @@ export class SeoOrchestratorService {
     this.logger.log('🔍 Running continuous monitoring cycle');
 
     try {
+      // Clean up old processed opportunities (older than 3 days) to prevent memory buildup
+      this.cleanupOldOpportunities();
+      
       // Track ranking changes using SERP data only (GSC runs once daily)
       const rankings = await this.serpService.trackKeywordRankings(this.coreKeywords.slice(0, 10));
       
       // Look for immediate opportunities (trending topics, competitor gaps)
       const urgentOpportunities = await this.findUrgentOpportunities();
       
-      // Filter out already processed opportunities to prevent duplicates
-      const newUrgentOpportunities = urgentOpportunities.filter(opp => 
-        !this.processedOpportunities.has(opp.keyword)
-      );
+      // Filter out opportunities processed within the last 24 hours to prevent duplicates
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const newUrgentOpportunities = urgentOpportunities.filter(opp => {
+        const lastProcessed = this.processedOpportunities.get(opp.keyword);
+        return !lastProcessed || lastProcessed < oneDayAgo;
+      });
       
       if (newUrgentOpportunities.length > 0) {
-        this.logger.log(`Found ${newUrgentOpportunities.length} NEW urgent opportunities (${urgentOpportunities.length - newUrgentOpportunities.length} already processed)`);
+        this.logger.log(`Found ${newUrgentOpportunities.length} NEW urgent opportunities (${urgentOpportunities.length - newUrgentOpportunities.length} processed within 24h)`);
         
         // Execute on the highest priority urgent opportunity
         const topUrgent = newUrgentOpportunities[0];
         const content = await this.executeOpportunity(topUrgent);
         
         if (content) {
-          // Mark as processed to prevent future duplicates
-          this.processedOpportunities.add(topUrgent.keyword);
+          // Mark as processed with current timestamp to prevent future duplicates
+          this.processedOpportunities.set(topUrgent.keyword, new Date());
           
           await this.notionService.saveGeneratedContent(
             content,
@@ -213,7 +218,7 @@ export class SeoOrchestratorService {
           });
         }
       } else if (urgentOpportunities.length > 0) {
-        this.logger.log(`✅ Found ${urgentOpportunities.length} urgent opportunities, but all already processed (no duplicates sent)`);
+        this.logger.log(`✅ Found ${urgentOpportunities.length} urgent opportunities, but all processed within 24h (no duplicates sent)`);
       }
 
       // Note: Performance data (GSC) is updated separately once daily at 7 AM to avoid duplicates
@@ -639,20 +644,41 @@ ${opportunity.suggestedResponse}
   }
 
   private async findUrgentOpportunities(): Promise<KeywordOpportunity[]> {
-    // Look for trending keywords or sudden competitor movements
+    // Dynamic urgent opportunities based on time and randomization
     const currentYear = new Date().getFullYear();
-    const trendingKeywords = [
+    const currentMonth = new Date().getMonth();
+    const currentHour = new Date().getHours();
+    
+    // Rotate keywords based on time to avoid always finding the same ones
+    const allPossibleKeywords = [
       `blockchain API trends ${currentYear}`,
       'new DeFi protocols',
-      'crypto market data updates',
+      'crypto market data updates', 
       'web3 infrastructure changes',
       'blockchain API performance',
+      'multi-chain data providers',
+      'crypto API comparison',
+      'real-time blockchain data',
+      'wallet API integration',
+      'DeFi yield farming APIs',
+      'NFT metadata APIs',
+      'blockchain analytics tools'
     ];
     
-    const opportunities = await this.serpService.findContentOpportunities(trendingKeywords);
+    // Select different keywords based on time to create variety
+    const keywordIndex = currentHour % allPossibleKeywords.length;
+    const selectedKeywords = [
+      allPossibleKeywords[keywordIndex],
+      allPossibleKeywords[(keywordIndex + 1) % allPossibleKeywords.length],
+      allPossibleKeywords[(keywordIndex + 2) % allPossibleKeywords.length]
+    ];
     
-    // Only return high-scoring opportunities to reduce noise
-    return opportunities.filter(opp => opp.opportunityScore >= 85);
+    this.logger.log(`🔍 Checking urgent opportunities for: ${selectedKeywords.join(', ')}`);
+    
+    const opportunities = await this.serpService.findContentOpportunities(selectedKeywords);
+    
+    // Higher threshold to reduce frequency and only return genuinely urgent opportunities
+    return opportunities.filter(opp => opp.opportunityScore >= 90);
   }
 
   private async monitorCompetitors(): Promise<void> {
@@ -750,6 +776,23 @@ ${opportunity.suggestedResponse}
     
     // In a real implementation, we'd ping each API to verify connectivity
     this.logger.log(`✅ Verified connections to: ${apis.join(', ')}`);
+  }
+
+  private cleanupOldOpportunities(): void {
+    // Remove processed opportunities older than 3 days to prevent memory buildup
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    let removedCount = 0;
+    
+    for (const [keyword, timestamp] of this.processedOpportunities.entries()) {
+      if (timestamp < threeDaysAgo) {
+        this.processedOpportunities.delete(keyword);
+        removedCount++;
+      }
+    }
+    
+    if (removedCount > 0) {
+      this.logger.log(`🧹 Cleaned up ${removedCount} old processed opportunities (older than 3 days)`);
+    }
   }
 
   private getNextExecutionTime(): string {
