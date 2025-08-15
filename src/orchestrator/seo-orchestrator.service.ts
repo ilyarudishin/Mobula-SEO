@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { ClaudeService, ContentGenerationRequest } from '../services/claude.service';
 import { NotionService } from '../services/notion.service';
 import { SlackService } from '../services/slack.service';
@@ -76,7 +76,7 @@ export class SeoOrchestratorService {
   ) {}
 
   // Main execution loop - runs twice per week
-  @Cron('0 9 * * 1,4') // Monday and Thursday at 9 AM
+  @Cron('0 9 * * 1,4', { timeZone: 'America/New_York' }) // Monday and Thursday at 9 AM EST
   async executeContentGeneration(): Promise<void> {
     if (this.isExecuting) {
       this.logger.log('Content generation already in progress, skipping...');
@@ -172,7 +172,7 @@ export class SeoOrchestratorService {
   }
 
   // Continuous monitoring loop - runs every 4 hours
-  @Cron('0 */4 * * *')
+  @Cron('0 */4 * * *', { timeZone: 'America/New_York' })
   async continuousMonitoring(): Promise<void> {
     this.logger.log('🔍 Running continuous monitoring cycle');
 
@@ -228,8 +228,8 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Reddit discovery - runs twice daily at 8 AM and 6 PM for maximum coverage
-  @Cron('0 8,18 * * *')
+  // Reddit discovery - runs twice daily at 8 AM and 6 PM EST for maximum coverage
+  @Cron('0 8,18 * * *', { timeZone: 'America/New_York' })
   async scanRedditOpportunities(): Promise<void> {
     this.logger.log('🔍 Bi-daily Reddit scan for NEW Mobula-relevant opportunities...');
 
@@ -409,8 +409,8 @@ ${opportunity.suggestedResponse}
     }
   }
 
-  // Weekly report - runs every Sunday
-  @Cron('0 18 * * 0')
+  // Weekly report - runs every Sunday at 6 PM EST
+  @Cron('0 18 * * 0', { timeZone: 'America/New_York' })
   async generateWeeklyReport(): Promise<void> {
     this.logger.log('📊 Generating weekly SEO execution report with GSC data');
 
@@ -453,8 +453,8 @@ ${opportunity.suggestedResponse}
     }
   }
 
-  // DAILY GSC TRACKING & REPORTING - runs once per day at 7 AM (ONLY place for GSC data)
-  @Cron('0 7 * * *')
+  // DAILY GSC TRACKING & REPORTING - runs once per day at 7 AM EST (ONLY place for GSC data)
+  @Cron('0 7 * * *', { timeZone: 'America/New_York' })
   async dailyGscTracking(): Promise<void> {
     this.logger.log('📊 Running daily GSC tracking and performance reporting (ONCE daily)');
     
@@ -512,8 +512,8 @@ ${opportunity.suggestedResponse}
     }
   }
 
-  // Health check - runs daily (NO GSC calls to avoid duplicates)  
-  @Cron(CronExpression.EVERY_DAY_AT_6AM)
+  // Health check - runs daily at 6 AM EST (NO GSC calls to avoid duplicates)  
+  @Cron('0 6 * * *', { timeZone: 'America/New_York' })
   async dailyHealthCheck(): Promise<void> {
     this.logger.log('🔧 Running daily health check (GSC data tracked separately at 7 AM)');
     
