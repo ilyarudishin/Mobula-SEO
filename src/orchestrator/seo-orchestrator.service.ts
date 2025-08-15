@@ -9,6 +9,8 @@ import { RedditDiscoveryService } from '../services/reddit-discovery.service';
 import { BlogDiscoveryService } from '../services/blog-discovery.service';
 import { SocialListeningService } from '../services/social-listening.service';
 import { GoogleSearchConsoleService } from '../services/google-search-console.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface ExecutionMetrics {
   contentCreated: number;
@@ -25,6 +27,7 @@ export class SeoOrchestratorService {
   private isExecuting = false;
   private executionCount = 0;
   private readonly processedOpportunities = new Map<string, Date>(); // Track with timestamp
+  private readonly processedOpportunitiesFile = path.join(process.cwd(), 'processed-opportunities.json');
   
   // Core keywords to monitor and execute on
   private readonly coreKeywords = [
@@ -73,7 +76,10 @@ export class SeoOrchestratorService {
     private blogDiscoveryService: BlogDiscoveryService,
     private socialListeningService: SocialListeningService,
     private gscService: GoogleSearchConsoleService,
-  ) {}
+  ) {
+    // Load processed opportunities from file on startup
+    this.loadProcessedOpportunities();
+  }
 
   // Main execution loop - runs twice per week
   @Cron('0 9 * * 1,4', { timeZone: 'America/New_York' }) // Monday and Thursday at 9 AM EST
@@ -203,6 +209,7 @@ export class SeoOrchestratorService {
         if (content) {
           // Mark as processed with current timestamp to prevent future duplicates
           this.processedOpportunities.set(topUrgent.keyword, new Date());
+          this.saveProcessedOpportunities(); // Persist to file
           
           await this.notionService.saveGeneratedContent(
             content,
@@ -792,6 +799,42 @@ ${opportunity.suggestedResponse}
     
     if (removedCount > 0) {
       this.logger.log(`🧹 Cleaned up ${removedCount} old processed opportunities (older than 3 days)`);
+      this.saveProcessedOpportunities(); // Save after cleanup
+    }
+  }
+
+  private loadProcessedOpportunities(): void {
+    try {
+      if (fs.existsSync(this.processedOpportunitiesFile)) {
+        const data = fs.readFileSync(this.processedOpportunitiesFile, 'utf8');
+        const parsed = JSON.parse(data);
+        
+        // Convert string timestamps back to Date objects
+        for (const [keyword, timestamp] of Object.entries(parsed)) {
+          this.processedOpportunities.set(keyword, new Date(timestamp as string));
+        }
+        
+        this.logger.log(`📁 Loaded ${this.processedOpportunities.size} processed opportunities from persistent storage`);
+      } else {
+        this.logger.log(`📁 No processed opportunities file found - starting fresh`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to load processed opportunities: ${error.message}`);
+    }
+  }
+
+  private saveProcessedOpportunities(): void {
+    try {
+      // Convert Map to plain object for JSON serialization
+      const obj: { [key: string]: string } = {};
+      for (const [keyword, timestamp] of this.processedOpportunities.entries()) {
+        obj[keyword] = timestamp.toISOString();
+      }
+      
+      fs.writeFileSync(this.processedOpportunitiesFile, JSON.stringify(obj, null, 2));
+      this.logger.log(`💾 Saved ${this.processedOpportunities.size} processed opportunities to persistent storage`);
+    } catch (error) {
+      this.logger.error(`Failed to save processed opportunities: ${error.message}`);
     }
   }
 
