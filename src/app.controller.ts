@@ -561,6 +561,114 @@ ${seoOptimizedResponse}
     }
   }
 
+  @Get('scan-reddit-6months')
+  async scanReddit6Months() {
+    try {
+      // Clear cache and get fresh Reddit opportunities from last 6 months
+      this.redditService.clearSeenPostsCache();
+      
+      // Temporarily modify the Reddit service to scan 6 months
+      const allOpportunities = await this.redditService.discoverOpportunitiesHistorical(6); // 6 months
+      
+      let savedCount = 0;
+      const savedOpportunities: any[] = [];
+      
+      // Generate SEO-optimized responses for top opportunities
+      for (const opp of allOpportunities.slice(0, 25)) { // Save more for historical scan
+        try {
+          // Get SERP data for SEO optimization
+          let seoOptimizedResponse = opp.suggestedResponse;
+          let serpInsights = '';
+          
+          try {
+            const serpData = await this.serpService.analyzeSerpForKeyword(`${opp.keywords[0]} API`);
+            
+            // Generate SEO-optimized response
+            const redditResponse = await this.redditResponseGenerator.generateResponse({
+              postTitle: opp.postTitle,
+              postContent: opp.content,
+              subreddit: opp.subreddit,
+              author: opp.author,
+              url: opp.postUrl,
+              keywords: opp.keywords
+            });
+            seoOptimizedResponse = redditResponse.response;
+            
+            serpInsights = `
+**🔍 SEO INSIGHTS:**
+- Search volume: ${serpData.totalResults.toLocaleString()} results for "${opp.keywords[0]} API"
+- Top competitors: ${serpData.topResults.slice(0, 3).map(r => r.domain).join(', ')}
+- Related questions: ${serpData.peopleAlsoAsk.slice(0, 2).join(' | ')}`;
+            
+          } catch (serpError) {
+            console.log('SERP analysis failed, using basic response');
+          }
+
+          const pageId = await this.notionService.createOpportunity({
+            type: 'reddit_response',
+            title: `📅 Historical Reddit: ${opp.postTitle}`,
+            content: `**REDDIT ENGAGEMENT OPPORTUNITY (6-MONTH HISTORICAL SCAN)**
+
+**Post:** ${opp.postTitle}
+**Subreddit:** r/${opp.subreddit}  
+**URL:** ${opp.postUrl}
+**Author:** ${opp.author}
+**Reddit Score:** ${opp.score} upvotes
+**Comments:** ${opp.commentCount}
+**Posted:** ${new Date(opp.timestamp).toLocaleDateString()}
+**Keywords Matched:** ${opp.keywords.join(', ')}
+**Opportunity Score:** ${opp.opportunityScore}/100
+${serpInsights}
+
+---
+
+**🤖 SEO-OPTIMIZED RESPONSE DRAFT:**
+
+${seoOptimizedResponse}
+
+---
+
+**📝 ACTION:** Historical opportunity from 6-month scan. Review the SEO-optimized response above, customize if needed. This post may be older but represents a pattern of API requests to monitor.`,
+            priorityScore: Math.max(opp.opportunityScore - 10, 1), // Slightly lower priority for historical
+            status: 'identified',
+            targetKeywords: opp.keywords,
+            competitionDifficulty: 30,
+            trafficPotential: opp.score * 5, // Lower traffic potential for older posts
+            generatedAt: new Date(),
+          });
+          
+          savedCount++;
+          savedOpportunities.push({
+            title: opp.postTitle,
+            subreddit: opp.subreddit,
+            score: opp.opportunityScore,
+            url: opp.postUrl,
+            notionPageId: pageId,
+            posted: new Date(opp.timestamp).toLocaleDateString(),
+          });
+          
+        } catch (error) {
+          console.error(`Failed to save opportunity: ${opp.postTitle}`, error.message);
+        }
+      }
+      
+      return {
+        status: 'success',
+        scanPeriod: '6 months',
+        totalOpportunitiesFound: allOpportunities.length,
+        savedToNotion: savedCount,
+        opportunities: savedOpportunities,
+        message: `Successfully saved ${savedCount} historical Reddit opportunities to Notion (6-month scan)`
+      };
+      
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
   @Get('generate-reddit-responses')
   async generateRedditResponses() {
     try {

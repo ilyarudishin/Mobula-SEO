@@ -254,6 +254,33 @@ export class RedditDiscoveryService {
     return sortedOpportunities;
   }
 
+  async discoverOpportunitiesHistorical(months: number = 6): Promise<RedditOpportunity[]> {
+    this.logger.log(`🔍 Historical Reddit scan for last ${months} months...`);
+
+    const allOpportunities: RedditOpportunity[] = [];
+
+    for (const subredditConfig of this.subredditConfigs) {
+      try {
+        const opportunities = await this.scrapeSubredditHistorical(subredditConfig, months);
+        allOpportunities.push(...opportunities);
+        
+        // Rate limiting to be respectful
+        await this.sleep(2000);
+      } catch (error) {
+        this.logger.error(`Failed to scrape r/${subredditConfig.name}: ${error.message}`);
+      }
+    }
+
+    // Sort by opportunity score and return top opportunities
+    const sortedOpportunities = allOpportunities
+      .sort((a, b) => b.opportunityScore - a.opportunityScore)
+      .slice(0, 50); // More results for historical scan
+
+    this.logger.log(`Found ${sortedOpportunities.length} total historical Reddit opportunities (${months} months)`);
+    
+    return sortedOpportunities;
+  }
+
   async getNewOpportunities(): Promise<RedditOpportunity[]> {
     // Get all opportunities but filter for new ones only
     const allOpportunities = await this.discoverOpportunities();
@@ -303,6 +330,40 @@ export class RedditDiscoveryService {
     return opportunities;
   }
 
+  private async scrapeSubredditHistorical(config: SubredditConfig, months: number): Promise<RedditOpportunity[]> {
+    const opportunities: RedditOpportunity[] = [];
+
+    try {
+      // Use search API for historical data with broader terms
+      const searchTerms = ['api', 'price api', 'wallet api', 'data api', 'crypto api', 'blockchain api'];
+      
+      for (const searchTerm of searchTerms.slice(0, 3)) { // Use more search terms for historical
+        const url = `https://www.reddit.com/r/${config.name}/search.json?q=${encodeURIComponent(searchTerm)}&restrict_sr=1&sort=new&limit=50&t=year`;
+        
+        const response = await axios.get(url, {
+          headers: {
+            'User-Agent': 'MobulaAPI:SEOMonitor:v1.0.0 (monitoring only)',
+          },
+          timeout: 10000,
+        });
+
+        const posts = response.data.data.children;
+        
+        for (const postData of posts) {
+          const post = postData.data;
+          await this.processPostHistorical(post, config, opportunities, months);
+        }
+        
+        // Rate limiting between searches
+        await this.sleep(3000);
+      }
+    } catch (error) {
+      this.logger.error(`Error scraping r/${config.name} (historical): ${error.message}`);
+    }
+
+    return opportunities;
+  }
+
   private async processPost(post: any, config: SubredditConfig, opportunities: RedditOpportunity[]): Promise<void> {
     // Skip if we've already seen this post
     if (this.seenPostIds.has(post.id)) return;
@@ -337,6 +398,18 @@ export class RedditDiscoveryService {
                       postText.includes('what ');
     if (!isQuestion) return;
     
+    // MUST be crypto/blockchain related first
+    const cryptoTerms = [
+      'crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'solana', 'blockchain',
+      'token', 'coin', 'defi', 'web3', 'nft', 'dapp', 'smart contract',
+      'metamask', 'phantom', 'wallet connect', 'uniswap', 'pancakeswap',
+      'binance', 'coinbase', 'kraken', 'polygon', 'arbitrum', 'avalanche',
+      'bsc', 'bnb chain', 'base', 'optimism', 'fantom', 'matic'
+    ];
+    
+    const isCryptoRelated = cryptoTerms.some(term => postText.includes(term));
+    if (!isCryptoRelated) return;
+
     // Must match Mobula's services
     const mobulaServices = [
       'price', 'pricing', 'market data', 'crypto price', 'token price',
@@ -347,8 +420,12 @@ export class RedditDiscoveryService {
     const matchesMobula = mobulaServices.some(service => postText.includes(service));
     if (!matchesMobula) return;
     
-    // Reject non-API requests
-    const rejectTerms = ['bot', 'trading bot', 'payment', 'guide', 'tutorial'];
+    // Reject non-API requests and non-crypto terms
+    const rejectTerms = [
+      'bot', 'trading bot', 'payment', 'guide', 'tutorial',
+      'whatsapp', 'telegram', 'discord', 'social media', 'email',
+      'sms', 'notification', 'weather', 'news', 'sports'
+    ];
     const shouldReject = rejectTerms.some(term => postText.includes(term));
     if (shouldReject) return;
 
@@ -357,6 +434,98 @@ export class RedditDiscoveryService {
     
     const opportunityScore = this.calculateOpportunityScore(post, matchedKeywords, config);
     if (opportunityScore < 45) return;
+
+    const engagementSuggestion = await this.generateEngagementSuggestion(post, matchedKeywords);
+
+    // Add to seen posts
+    this.seenPostIds.add(post.id);
+
+    opportunities.push({
+      postId: post.id,
+      postTitle: post.title,
+      postUrl: `https://reddit.com/r/${config.name}/comments/${post.id}`,
+      subreddit: config.name,
+      author: post.author,
+      content: post.selftext || '',
+      score: post.score,
+      commentCount: post.num_comments,
+      opportunityScore,
+      suggestedResponse: engagementSuggestion,
+      keywords: matchedKeywords,
+      timestamp: new Date(post.created_utc * 1000),
+    });
+  }
+
+  private async processPostHistorical(post: any, config: SubredditConfig, opportunities: RedditOpportunity[], months: number): Promise<void> {
+    // Skip if we've already seen this post
+    if (this.seenPostIds.has(post.id)) return;
+    
+    // Skip if post score is too low
+    if (post.score < config.minScore) return;
+
+    // Check post age - only posts from specified months period
+    const postAge = Date.now() - (post.created_utc * 1000);
+    const monthsInMs = months * 30 * 24 * 60 * 60 * 1000;
+    if (postAge > monthsInMs) {
+      return; // Skip posts older than specified months
+    }
+
+    const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
+    
+    // STRICT FILTERING: Must be asking for API recommendations (same criteria as current)
+    const apiRequestPatterns = [
+      'best api', 'good api', 'api recommendation', 'which api', 'what api',
+      'recommend api', 'suggest api', 'need api', 'looking for api',
+      'api for', 'free api', 'cheap api'
+    ];
+    
+    const hasApiRequest = apiRequestPatterns.some(pattern => postText.includes(pattern));
+    if (!hasApiRequest) return;
+    
+    // Must be asking a question
+    const isQuestion = postText.includes('?') || 
+                      postText.includes('recommend') ||
+                      postText.includes('suggest') ||
+                      postText.includes('which ') ||
+                      postText.includes('what ');
+    if (!isQuestion) return;
+    
+    // MUST be crypto/blockchain related first
+    const cryptoTerms = [
+      'crypto', 'cryptocurrency', 'bitcoin', 'ethereum', 'solana', 'blockchain',
+      'token', 'coin', 'defi', 'web3', 'nft', 'dapp', 'smart contract',
+      'metamask', 'phantom', 'wallet connect', 'uniswap', 'pancakeswap',
+      'binance', 'coinbase', 'kraken', 'polygon', 'arbitrum', 'avalanche',
+      'bsc', 'bnb chain', 'base', 'optimism', 'fantom', 'matic'
+    ];
+    
+    const isCryptoRelated = cryptoTerms.some(term => postText.includes(term));
+    if (!isCryptoRelated) return;
+
+    // Must match Mobula's services
+    const mobulaServices = [
+      'price', 'pricing', 'market data', 'crypto price', 'token price',
+      'wallet', 'portfolio', 'balance', 'transaction', 'tx history',
+      'metadata', 'token info', 'multi-chain', 'cross-chain'
+    ];
+    
+    const matchesMobula = mobulaServices.some(service => postText.includes(service));
+    if (!matchesMobula) return;
+    
+    // Reject non-API requests and non-crypto terms
+    const rejectTerms = [
+      'bot', 'trading bot', 'payment', 'guide', 'tutorial',
+      'whatsapp', 'telegram', 'discord', 'social media', 'email',
+      'sms', 'notification', 'weather', 'news', 'sports'
+    ];
+    const shouldReject = rejectTerms.some(term => postText.includes(term));
+    if (shouldReject) return;
+
+    // Generate keywords and response
+    const matchedKeywords = mobulaServices.filter(service => postText.includes(service));
+    
+    const opportunityScore = this.calculateOpportunityScore(post, matchedKeywords, config);
+    if (opportunityScore < 40) return; // Slightly lower threshold for historical
 
     const engagementSuggestion = await this.generateEngagementSuggestion(post, matchedKeywords);
 
