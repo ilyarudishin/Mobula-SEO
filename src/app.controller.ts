@@ -461,8 +461,9 @@ export class AppController {
   @Get('scan-reddit-save-to-notion')
   async scanRedditAndSaveToNotion() {
     try {
-      // Get fresh Reddit opportunities (clears cache first)
-      const allOpportunities = await this.redditService.getNewOpportunities();
+      // Clear cache and get ALL fresh Reddit opportunities from last 48 hours
+      this.redditService.clearSeenPostsCache();
+      const allOpportunities = await this.redditService.discoverOpportunities();
       
       let savedCount = 0;
       const savedOpportunities: any[] = [];

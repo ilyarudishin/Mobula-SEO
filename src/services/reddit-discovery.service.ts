@@ -279,8 +279,8 @@ export class RedditDiscoveryService {
     const opportunities: RedditOpportunity[] = [];
 
     try {
-      // Search through the last year, not just hot posts
-      const url = `https://www.reddit.com/r/${config.name}/search.json?q=${config.keywords.join(' OR ')}&restrict_sr=1&sort=relevance&t=year&limit=${config.maxPostsPerScan}`;
+      // Search for NEW posts from the last 24 hours only
+      const url = `https://www.reddit.com/r/${config.name}/new.json?limit=${config.maxPostsPerScan}`;
       
       const response = await axios.get(url, {
         headers: {
@@ -300,66 +300,57 @@ export class RedditDiscoveryService {
         // Skip if post score is too low
         if (post.score < config.minScore) continue;
 
-        // COMPREHENSIVE FILTERING: Capture all Mobula-relevant conversations
+        // EXTREMELY STRICT FILTERING: Only genuine API requests matching Mobula docs
         const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
         
-        // REQUIREMENT 1: Must match services from Mobula's documentation
-        const docServiceMatches = this.mobulaDocServices.filter(phrase => 
-          postText.includes(phrase.toLowerCase())
+        // STEP 1: Must contain explicit API request patterns
+        const explicitApiPatterns = [
+          'what api', 'which api', 'best api', 'good api', 'recommend api',
+          'api for', 'api to get', 'api that', 'need api', 'looking for api',
+          'price api', 'market api', 'wallet api', 'data api', 'token api',
+          'portfolio api', 'crypto api', 'blockchain api'
+        ];
+        
+        const hasExplicitApiRequest = explicitApiPatterns.some(pattern => 
+          postText.includes(pattern)
         );
-        if (docServiceMatches.length === 0) continue;
+        if (!hasExplicitApiRequest) continue;
 
-        // REQUIREMENT 2: Must show engagement intent (questions OR building OR problems OR experience)
-        const hasQuestionWord = this.questionWords.some(word => postText.includes(word));
-        const hasBuildingContext = this.buildingWords.some(word => postText.includes(word));
+        // STEP 2: Must be asking a question (not announcing/discussing)
+        const hasQuestionMark = postText.includes('?');
+        const questionStarters = ['what', 'which', 'how', 'where', 'recommend', 'suggest'];
+        const hasQuestionWord = questionStarters.some(word => postText.startsWith(word) || postText.includes(` ${word} `));
         
-        // More inclusive: Either asking questions OR building something OR discussing solutions
-        if (!hasQuestionWord && !hasBuildingContext) {
-          // Allow posts that discuss problems or share experiences even without explicit question words
-          const hasRelevantDiscussion = ['discussion', 'sharing', 'feedback', 'review', 'comparison', 'analysis'].some(word => postText.includes(word));
-          if (!hasRelevantDiscussion) continue;
-        }
-        
-        // SIMPLIFIED SPAM FILTER: Reject obvious spam/memes/investment advice
-        const rejectKeywords = [
-          'buy', 'sell', 'hold', 'moon', 'pump', 'dump', 'hodl', 'to the moon',
-          'check out my', 'follow me', 'dm me', 'telegram', 'discord',
-          'airdrop', 'giveaway', 'promo code', 'referral',
-          'meme coin', 'joke token', 'lol', 'haha', 'ser', 'anon'
+        if (!hasQuestionMark && !hasQuestionWord) continue;
+
+        // STEP 3: Must match Mobula's core services (price, wallet, metadata, multi-chain)
+        const mobulaServices = [
+          'price', 'pricing', 'market data', 'market cap', 'volume',
+          'wallet', 'portfolio', 'balance', 'transaction history',
+          'token data', 'token metadata', 'token info',
+          'multi-chain', 'cross-chain', 'multiple blockchains',
+          'real-time', 'historical data', 'websocket', 'streaming'
         ];
         
-        // Reject posts containing spam keywords
-        if (rejectKeywords.some(reject => postText.includes(reject.toLowerCase()))) continue;
-        
-        // EXPANDED CRYPTO/BLOCKCHAIN CONTEXT - Include all relevant terms
-        const cryptoKeywords = [
-          // Core crypto terms
-          'crypto', 'cryptocurrency', 'blockchain', 'bitcoin', 'ethereum', 'solana',
-          'defi', 'web3', 'nft', 'token', 'coin', 'digital asset',
-          // Platforms & protocols  
-          'binance', 'coinbase', 'uniswap', 'compound', 'aave', 'makerdao',
-          'polygon', 'arbitrum', 'optimism', 'avalanche', 'fantom', 'bsc',
-          // Activities & tools
-          'trading', 'swap', 'dex', 'cex', 'wallet', 'staking', 'yield',
-          'liquidity', 'pool', 'farm', 'mining', 'validator', 'node',
-          // Technical terms
-          'smart contract', 'dapp', 'protocol', 'consensus', 'hash',
-          'decentralized', 'distributed', 'peer-to-peer', 'trustless'
+        const matchesMobulaService = mobulaServices.some(service => 
+          postText.includes(service)
+        );
+        if (!matchesMobulaService) continue;
+
+        // STEP 4: Reject guides, announcements, general discussions
+        const rejectPatterns = [
+          'guide', '[guide]', 'tutorial', 'explained', 'how to',
+          'just launched', 'just dropped', 'announcing', 'new consensus',
+          'manipulation is real', 'getting more scarce', 'crazy how',
+          'same block', 'mempool', 'oracle setup'
         ];
         
-        const hasCryptoContext = cryptoKeywords.some(crypto => postText.includes(crypto.toLowerCase()));
-        const isRelevantSubreddit = [
-          'ethereum', 'ethdev', 'solana', 'web3', 'defi', 'cryptocurrency', 
-          'bitcoin', 'cryptotechnology', 'cryptodevs', 'programming', 'webdev'
-        ].includes(config.name.toLowerCase());
-        
-        // More inclusive: If we're in a crypto subreddit OR have crypto context, allow it
-        // For programming subreddits, require explicit crypto context
-        if (!isRelevantSubreddit && !hasCryptoContext) continue;
-        if (['programming', 'webdev'].includes(config.name.toLowerCase()) && !hasCryptoContext) continue;
-        
-        // Use the Mobula documentation services that matched
-        const allMatchedKeywords = docServiceMatches;
+        const shouldReject = rejectPatterns.some(pattern => postText.includes(pattern));
+        if (shouldReject) continue;
+
+        // Use matched Mobula services as keywords
+        const matchedServices = mobulaServices.filter(service => postText.includes(service));
+        const allMatchedKeywords = matchedServices;
 
         // Calculate opportunity score
         const opportunityScore = this.calculateOpportunityScore(
@@ -368,14 +359,14 @@ export class RedditDiscoveryService {
           config
         );
 
-        // Lower quality threshold to capture more conversations
-        if (opportunityScore < 45) continue;
+        // Higher quality threshold - only capture high-relevance API requests
+        if (opportunityScore < 65) continue;
 
-        // CRITICAL: Filter out posts older than 1 year (stale opportunities)
+        // EXTENDED SEARCH: Check posts from last 6 months for more opportunities
         const postAge = Date.now() - (post.created_utc * 1000);
-        const oneYearInMs = 365 * 24 * 60 * 60 * 1000;
-        if (postAge > oneYearInMs) {
-          continue; // Skip posts older than 1 year
+        const sixMonthsInMs = 6 * 30 * 24 * 60 * 60 * 1000;
+        if (postAge > sixMonthsInMs) {
+          continue; // Skip posts older than 6 months
         }
 
         // Generate engagement suggestion (not automated response)
