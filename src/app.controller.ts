@@ -478,14 +478,19 @@ export class AppController {
           try {
             const serpData = await this.serpService.analyzeSerpForKeyword(`${opp.keywords[0]} API`);
             
-            // Generate SEO-optimized response
+            // Generate SEO-optimized response with SERP data for Mobula positioning
             const redditResponse = await this.redditResponseGenerator.generateResponse({
               postTitle: opp.postTitle,
               postContent: opp.content,
               subreddit: opp.subreddit,
               author: opp.author,
               url: opp.postUrl,
-              keywords: opp.keywords
+              keywords: opp.keywords,
+              serpData: {
+                topCompetitors: serpData.topResults.slice(0, 3).map(r => r.domain),
+                peopleAlsoAsk: serpData.peopleAlsoAsk.slice(0, 3),
+                totalResults: serpData.totalResults
+              }
             });
             seoOptimizedResponse = redditResponse.response;
             
@@ -583,14 +588,19 @@ ${seoOptimizedResponse}
           try {
             const serpData = await this.serpService.analyzeSerpForKeyword(`${opp.keywords[0]} API`);
             
-            // Generate SEO-optimized response
+            // Generate SEO-optimized response with SERP data for Mobula positioning
             const redditResponse = await this.redditResponseGenerator.generateResponse({
               postTitle: opp.postTitle,
               postContent: opp.content,
               subreddit: opp.subreddit,
               author: opp.author,
               url: opp.postUrl,
-              keywords: opp.keywords
+              keywords: opp.keywords,
+              serpData: {
+                topCompetitors: serpData.topResults.slice(0, 3).map(r => r.domain),
+                peopleAlsoAsk: serpData.peopleAlsoAsk.slice(0, 3),
+                totalResults: serpData.totalResults
+              }
             });
             seoOptimizedResponse = redditResponse.response;
             

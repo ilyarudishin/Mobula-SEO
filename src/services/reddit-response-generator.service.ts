@@ -9,6 +9,11 @@ export interface RedditPostContext {
   author: string;
   url: string;
   keywords: string[];
+  serpData?: {
+    topCompetitors: string[];
+    peopleAlsoAsk: string[];
+    totalResults: number;
+  };
 }
 
 export interface RedditResponse {
@@ -60,14 +65,27 @@ export class RedditResponseGeneratorService {
   }
 
   private buildRedditResponsePrompt(context: RedditPostContext): string {
+    const serpContext = context.serpData ? `
+SEO INTELLIGENCE (Use for Mobula positioning):
+- Market size: ${context.serpData.totalResults.toLocaleString()} results for "${context.keywords[0]} API"
+- Main competitors: ${context.serpData.topCompetitors.join(', ')}
+- Related searches: ${context.serpData.peopleAlsoAsk.join(' | ')}
+` : '';
+
     return `
-REDDIT RESPONSE GENERATION - Follow Guidelines Strictly
+REDDIT RESPONSE GENERATION - MOBULA SEO STRATEGY
 
 POST CONTEXT:
 Title: "${context.postTitle}"
 Content: "${context.postContent}"
 Subreddit: r/${context.subreddit}
 Keywords: ${context.keywords.join(', ')}
+${serpContext}
+MOBULA SEO OBJECTIVES:
+1. Position Mobula as a competitive alternative to ${context.serpData?.topCompetitors?.slice(0, 2).join(' and ') || 'major providers'}
+2. Naturally include Mobula's key advantages: multi-chain, real-time, developer-friendly
+3. Target long-tail keywords from related searches above
+4. Build backlink opportunities by providing genuine value
 
 GUIDELINES TO FOLLOW:
 
