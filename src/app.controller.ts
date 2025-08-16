@@ -461,16 +461,44 @@ export class AppController {
   @Get('scan-reddit-save-to-notion')
   async scanRedditAndSaveToNotion() {
     try {
-      // Clear cache and get ALL fresh Reddit opportunities from last 48 hours
+      // Clear cache and get ALL fresh Reddit opportunities with SEO optimization
       this.redditService.clearSeenPostsCache();
       const allOpportunities = await this.redditService.discoverOpportunities();
       
       let savedCount = 0;
       const savedOpportunities: any[] = [];
       
-      // Save top 10 opportunities to Notion
+      // Generate SEO-optimized responses for top opportunities
       for (const opp of allOpportunities.slice(0, 10)) {
         try {
+          // Get SERP data for SEO optimization
+          let seoOptimizedResponse = opp.suggestedResponse;
+          let serpInsights = '';
+          
+          try {
+            const serpData = await this.serpService.analyzeSerpForKeyword(`${opp.keywords[0]} API`);
+            
+            // Generate SEO-optimized response
+            const redditResponse = await this.redditResponseGenerator.generateResponse({
+              postTitle: opp.postTitle,
+              postContent: opp.content,
+              subreddit: opp.subreddit,
+              author: opp.author,
+              url: opp.postUrl,
+              keywords: opp.keywords
+            });
+            seoOptimizedResponse = redditResponse.response;
+            
+            serpInsights = `
+**🔍 SEO INSIGHTS:**
+- Search volume: ${serpData.totalResults.toLocaleString()} results for "${opp.keywords[0]} API"
+- Top competitors: ${serpData.topResults.slice(0, 3).map(r => r.domain).join(', ')}
+- Related questions: ${serpData.peopleAlsoAsk.slice(0, 2).join(' | ')}`;
+            
+          } catch (serpError) {
+            console.log('SERP analysis failed, using basic response');
+          }
+
           const pageId = await this.notionService.createOpportunity({
             type: 'reddit_response',
             title: `🔥 Reddit: ${opp.postTitle}`,
@@ -484,16 +512,17 @@ export class AppController {
 **Comments:** ${opp.commentCount}
 **Keywords Matched:** ${opp.keywords.join(', ')}
 **Opportunity Score:** ${opp.opportunityScore}/100
+${serpInsights}
 
 ---
 
-**🤖 AI-GENERATED RESPONSE DRAFT:**
+**🤖 SEO-OPTIMIZED RESPONSE DRAFT:**
 
-${opp.suggestedResponse}
+${seoOptimizedResponse}
 
 ---
 
-**📝 ACTION:** Review the AI-generated response above, customize it if needed, and post as a helpful comment on Reddit. Focus on providing genuine value to the developer community.`,
+**📝 ACTION:** Review the SEO-optimized response above, customize if needed, and post as a helpful comment on Reddit. This response is optimized for search visibility and competitor positioning.`,
             priorityScore: opp.opportunityScore,
             status: 'identified',
             targetKeywords: opp.keywords,

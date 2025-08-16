@@ -290,111 +290,93 @@ export class RedditDiscoveryService {
       });
 
       const posts = response.data.data.children;
-
+      
       for (const postData of posts) {
         const post = postData.data;
-        
-        // Skip if we've already seen this post
-        if (this.seenPostIds.has(post.id)) continue;
-        
-        // Skip if post score is too low
-        if (post.score < config.minScore) continue;
-
-        // EXTREMELY STRICT FILTERING: Only genuine API requests matching Mobula docs
-        const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
-        
-        // STEP 1: Must contain explicit API request patterns
-        const explicitApiPatterns = [
-          'what api', 'which api', 'best api', 'good api', 'recommend api',
-          'api for', 'api to get', 'api that', 'need api', 'looking for api',
-          'price api', 'market api', 'wallet api', 'data api', 'token api',
-          'portfolio api', 'crypto api', 'blockchain api'
-        ];
-        
-        const hasExplicitApiRequest = explicitApiPatterns.some(pattern => 
-          postText.includes(pattern)
-        );
-        if (!hasExplicitApiRequest) continue;
-
-        // STEP 2: Must be asking a question (not announcing/discussing)
-        const hasQuestionMark = postText.includes('?');
-        const questionStarters = ['what', 'which', 'how', 'where', 'recommend', 'suggest'];
-        const hasQuestionWord = questionStarters.some(word => postText.startsWith(word) || postText.includes(` ${word} `));
-        
-        if (!hasQuestionMark && !hasQuestionWord) continue;
-
-        // STEP 3: Must match Mobula's core services (price, wallet, metadata, multi-chain)
-        const mobulaServices = [
-          'price', 'pricing', 'market data', 'market cap', 'volume',
-          'wallet', 'portfolio', 'balance', 'transaction history',
-          'token data', 'token metadata', 'token info',
-          'multi-chain', 'cross-chain', 'multiple blockchains',
-          'real-time', 'historical data', 'websocket', 'streaming'
-        ];
-        
-        const matchesMobulaService = mobulaServices.some(service => 
-          postText.includes(service)
-        );
-        if (!matchesMobulaService) continue;
-
-        // STEP 4: Reject guides, announcements, general discussions
-        const rejectPatterns = [
-          'guide', '[guide]', 'tutorial', 'explained', 'how to',
-          'just launched', 'just dropped', 'announcing', 'new consensus',
-          'manipulation is real', 'getting more scarce', 'crazy how',
-          'same block', 'mempool', 'oracle setup'
-        ];
-        
-        const shouldReject = rejectPatterns.some(pattern => postText.includes(pattern));
-        if (shouldReject) continue;
-
-        // Use matched Mobula services as keywords
-        const matchedServices = mobulaServices.filter(service => postText.includes(service));
-        const allMatchedKeywords = matchedServices;
-
-        // Calculate opportunity score
-        const opportunityScore = this.calculateOpportunityScore(
-          post,
-          allMatchedKeywords,
-          config
-        );
-
-        // Higher quality threshold - only capture high-relevance API requests
-        if (opportunityScore < 65) continue;
-
-        // EXTENDED SEARCH: Check posts from last 6 months for more opportunities
-        const postAge = Date.now() - (post.created_utc * 1000);
-        const sixMonthsInMs = 6 * 30 * 24 * 60 * 60 * 1000;
-        if (postAge > sixMonthsInMs) {
-          continue; // Skip posts older than 6 months
-        }
-
-        // Generate engagement suggestion (not automated response)
-        const engagementSuggestion = await this.generateEngagementSuggestion(post, allMatchedKeywords);
-
-        // Add to seen posts to prevent duplicates
-        this.seenPostIds.add(post.id);
-
-        opportunities.push({
-          postId: post.id,
-          postTitle: post.title,
-          postUrl: `https://reddit.com/r/${config.name}/comments/${post.id}`,
-          subreddit: config.name,
-          author: post.author,
-          content: post.selftext || '',
-          score: post.score,
-          commentCount: post.num_comments,
-          opportunityScore,
-          suggestedResponse: engagementSuggestion,
-          keywords: allMatchedKeywords,
-          timestamp: new Date(post.created_utc * 1000),
-        });
+        await this.processPost(post, config, opportunities);
       }
+        
     } catch (error) {
       this.logger.error(`Error scraping r/${config.name}: ${error.message}`);
     }
 
     return opportunities;
+  }
+
+  private async processPost(post: any, config: SubredditConfig, opportunities: RedditOpportunity[]): Promise<void> {
+    // Skip if we've already seen this post
+    if (this.seenPostIds.has(post.id)) return;
+    
+    // Skip if post score is too low
+    if (post.score < config.minScore) return;
+
+    // CRITICAL: Filter out posts older than 48 hours (only fresh opportunities)
+    const postAge = Date.now() - (post.created_utc * 1000);
+    const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+    if (postAge > twoDaysInMs) {
+      return; // Skip posts older than 48 hours
+    }
+
+    const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
+    
+    // STRICT FILTERING: Must be asking for API recommendations
+    const apiRequestPatterns = [
+      'best api', 'good api', 'api recommendation', 'which api', 'what api',
+      'recommend api', 'suggest api', 'need api', 'looking for api',
+      'api for', 'free api', 'cheap api'
+    ];
+    
+    const hasApiRequest = apiRequestPatterns.some(pattern => postText.includes(pattern));
+    if (!hasApiRequest) return;
+    
+    // Must be asking a question
+    const isQuestion = postText.includes('?') || 
+                      postText.includes('recommend') ||
+                      postText.includes('suggest') ||
+                      postText.includes('which ') ||
+                      postText.includes('what ');
+    if (!isQuestion) return;
+    
+    // Must match Mobula's services
+    const mobulaServices = [
+      'price', 'pricing', 'market data', 'crypto price', 'token price',
+      'wallet', 'portfolio', 'balance', 'transaction', 'tx history',
+      'metadata', 'token info', 'multi-chain', 'cross-chain'
+    ];
+    
+    const matchesMobula = mobulaServices.some(service => postText.includes(service));
+    if (!matchesMobula) return;
+    
+    // Reject non-API requests
+    const rejectTerms = ['bot', 'trading bot', 'payment', 'guide', 'tutorial'];
+    const shouldReject = rejectTerms.some(term => postText.includes(term));
+    if (shouldReject) return;
+
+    // Generate keywords and response
+    const matchedKeywords = mobulaServices.filter(service => postText.includes(service));
+    
+    const opportunityScore = this.calculateOpportunityScore(post, matchedKeywords, config);
+    if (opportunityScore < 45) return;
+
+    const engagementSuggestion = await this.generateEngagementSuggestion(post, matchedKeywords);
+
+    // Add to seen posts
+    this.seenPostIds.add(post.id);
+
+    opportunities.push({
+      postId: post.id,
+      postTitle: post.title,
+      postUrl: `https://reddit.com/r/${config.name}/comments/${post.id}`,
+      subreddit: config.name,
+      author: post.author,
+      content: post.selftext || '',
+      score: post.score,
+      commentCount: post.num_comments,
+      opportunityScore,
+      suggestedResponse: engagementSuggestion,
+      keywords: matchedKeywords,
+      timestamp: new Date(post.created_utc * 1000),
+    });
   }
 
   private calculateOpportunityScore(
