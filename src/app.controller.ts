@@ -679,6 +679,128 @@ ${seoOptimizedResponse}
     }
   }
 
+  @Get('scan-reddit-1year')
+  async scanReddit1Year() {
+    try {
+      // Clear cache and get Reddit opportunities from last 12 months (avoiding duplicates)
+      this.redditService.clearSeenPostsCache();
+      
+      // Get 1-year historical data
+      const allOpportunities = await this.redditService.discoverOpportunitiesHistorical(12); // 12 months
+      
+      // Get existing Reddit opportunities from Notion to avoid duplicates
+      const existingOpportunities = await this.notionService.getExistingRedditOpportunities();
+      const existingPostIds = new Set(existingOpportunities.map(opp => opp.postId));
+      
+      // Filter out duplicates from 6-month scan
+      const newOpportunities = allOpportunities.filter(opp => !existingPostIds.has(opp.postId));
+      
+      let savedCount = 0;
+      const savedOpportunities: any[] = [];
+      
+      // Generate SEO-optimized responses for new opportunities only
+      for (const opp of newOpportunities.slice(0, 30)) { // Process up to 30 new opportunities
+        try {
+          // Get SERP data for SEO optimization
+          let seoOptimizedResponse = opp.suggestedResponse;
+          let serpInsights = '';
+          
+          try {
+            const serpData = await this.serpService.analyzeSerpForKeyword(`${opp.keywords[0]} API`);
+            
+            // Generate SEO-optimized response with SERP data for Mobula positioning
+            const redditResponse = await this.redditResponseGenerator.generateResponse({
+              postTitle: opp.postTitle,
+              postContent: opp.content,
+              subreddit: opp.subreddit,
+              author: opp.author,
+              url: opp.postUrl,
+              keywords: opp.keywords,
+              serpData: {
+                topCompetitors: serpData.topResults.slice(0, 3).map(r => r.domain),
+                peopleAlsoAsk: serpData.peopleAlsoAsk.slice(0, 3),
+                totalResults: serpData.totalResults
+              }
+            });
+            seoOptimizedResponse = redditResponse.response;
+            
+            serpInsights = `
+**🔍 SEO INSIGHTS:**
+- Search volume: ${serpData.totalResults.toLocaleString()} results for "${opp.keywords[0]} API"
+- Top competitors: ${serpData.topResults.slice(0, 3).map(r => r.domain).join(', ')}
+- Related questions: ${serpData.peopleAlsoAsk.slice(0, 2).join(' | ')}`;
+            
+          } catch (serpError) {
+            console.log('SERP analysis failed, using basic response');
+          }
+
+          const pageId = await this.notionService.createOpportunity({
+            type: 'reddit_response',
+            title: `📅 1-Year Historical: ${opp.postTitle}`,
+            content: `**REDDIT ENGAGEMENT OPPORTUNITY (1-YEAR HISTORICAL SCAN - NEW ONLY)**
+
+**Post:** ${opp.postTitle}
+**Subreddit:** r/${opp.subreddit}  
+**URL:** ${opp.postUrl}
+**Author:** ${opp.author}
+**Reddit Score:** ${opp.score} upvotes
+**Comments:** ${opp.commentCount}
+**Posted:** ${new Date(opp.timestamp).toLocaleDateString()}
+**Keywords Matched:** ${opp.keywords.join(', ')}
+**Opportunity Score:** ${opp.opportunityScore}/100
+${serpInsights}
+
+---
+
+**🤖 SEO-OPTIMIZED RESPONSE DRAFT:**
+
+${seoOptimizedResponse}
+
+---
+
+**📝 ACTION:** 1-year historical opportunity (NEW - not found in 6-month scan). Review the SEO-optimized response above, customize if needed. This represents a pattern of API requests to monitor for future opportunities.`,
+            priorityScore: Math.max(opp.opportunityScore - 15, 1), // Lower priority for 1-year historical
+            status: 'identified',
+            targetKeywords: opp.keywords,
+            competitionDifficulty: 35,
+            trafficPotential: opp.score * 3, // Lower traffic potential for older posts
+            generatedAt: new Date(),
+          });
+          
+          savedCount++;
+          savedOpportunities.push({
+            title: opp.postTitle,
+            subreddit: opp.subreddit,
+            score: opp.opportunityScore,
+            url: opp.postUrl,
+            notionPageId: pageId,
+            posted: new Date(opp.timestamp).toLocaleDateString(),
+          });
+          
+        } catch (error) {
+          console.error(`Failed to save opportunity: ${opp.postTitle}`, error.message);
+        }
+      }
+      
+      return {
+        status: 'success',
+        scanPeriod: '1 year (new opportunities only)',
+        totalOpportunitiesFound: allOpportunities.length,
+        existingOpportunities: existingPostIds.size,
+        newOpportunitiesFound: newOpportunities.length,
+        savedToNotion: savedCount,
+        opportunities: savedOpportunities,
+        message: `Successfully saved ${savedCount} NEW 1-year historical Reddit opportunities to Notion (excluded ${existingPostIds.size} duplicates from 6-month scan)`
+      };
+      
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+  }
+
   @Get('generate-reddit-responses')
   async generateRedditResponses() {
     try {

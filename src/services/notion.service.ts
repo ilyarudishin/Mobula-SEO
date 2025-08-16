@@ -411,6 +411,46 @@ export class NotionService {
     throw new Error(`${operationName} failed after ${maxRetries} attempts: ${lastError!.message}`);
   }
 
+  async getExistingRedditOpportunities(): Promise<{ postId: string; title: string }[]> {
+    try {
+      const response = await this.notion.databases.query({
+        database_id: this.databaseId,
+        filter: {
+          or: [
+            {
+              property: 'Title',
+              title: {
+                contains: '📅 Historical Reddit:'
+              }
+            },
+            {
+              property: 'Title',
+              title: {
+                contains: '🔥 Reddit:'
+              }
+            }
+          ]
+        }
+      });
+
+      return response.results.map((page: any) => {
+        const title = page.properties.Title?.title?.[0]?.text?.content || '';
+        // Extract Reddit post ID from URL if available in content
+        const postId = this.extractPostIdFromTitle(title);
+        return { postId, title };
+      });
+    } catch (error) {
+      this.logger.error(`Failed to get existing Reddit opportunities: ${error.message}`);
+      return [];
+    }
+  }
+
+  private extractPostIdFromTitle(title: string): string {
+    // Extract post ID from Reddit URLs in titles or return the title as fallback
+    const match = title.match(/comments\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : title;
+  }
+
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
