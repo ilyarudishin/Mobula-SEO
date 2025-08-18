@@ -380,23 +380,46 @@ export class RedditDiscoveryService {
 
     const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
     
-    // STRICT FILTERING: Must be asking for API recommendations
+    // COMPREHENSIVE FILTERING: Must be asking for API recommendations OR discussing Mobula-relevant topics
     const apiRequestPatterns = [
       'best api', 'good api', 'api recommendation', 'which api', 'what api',
       'recommend api', 'suggest api', 'need api', 'looking for api',
-      'api for', 'free api', 'cheap api'
+      'api for', 'free api', 'cheap api', 'data api', 'pricing api', 'crypto api',
+      'portfolio api', 'wallet api', 'blockchain api', 'web3 api', 'market data'
     ];
     
     const hasApiRequest = apiRequestPatterns.some(pattern => postText.includes(pattern));
-    if (!hasApiRequest) return;
     
-    // Must be asking a question
+    // ALSO capture general discussions about our services even without explicit API requests
+    const mobulaServiceDiscussion = [
+      'price data', 'market data', 'crypto prices', 'token prices', 'portfolio tracking',
+      'wallet tracking', 'multi-chain', 'cross-chain', 'real-time data', 'websocket',
+      'coingecko alternative', 'moralis alternative', 'alchemy alternative'
+    ];
+    
+    const hasServiceDiscussion = mobulaServiceDiscussion.some(service => postText.includes(service));
+    
+    if (!hasApiRequest && !hasServiceDiscussion) return;
+    
+    // Must be asking a question OR discussing relevant topics
     const isQuestion = postText.includes('?') || 
                       postText.includes('recommend') ||
                       postText.includes('suggest') ||
                       postText.includes('which ') ||
-                      postText.includes('what ');
-    if (!isQuestion) return;
+                      postText.includes('what ') ||
+                      postText.includes('how ') ||
+                      postText.includes('need ') ||
+                      postText.includes('looking for') ||
+                      postText.includes('trying to') ||
+                      postText.includes('help') ||
+                      postText.includes('advice');
+    
+    // ALSO capture discussions about competitors (valuable for positioning)
+    const competitorMention = [
+      'coingecko', 'coinmarketcap', 'moralis', 'alchemy', 'infura', 'quicknode'
+    ].some(comp => postText.includes(comp));
+    
+    if (!isQuestion && !competitorMention) return;
     
     // MUST be crypto/blockchain related first
     const cryptoTerms = [
@@ -433,7 +456,8 @@ export class RedditDiscoveryService {
     const matchedKeywords = mobulaServices.filter(service => postText.includes(service));
     
     const opportunityScore = this.calculateOpportunityScore(post, matchedKeywords, config);
-    if (opportunityScore < 45) return;
+    // LOWERED THRESHOLD: Capture more opportunities to ensure we don't miss any relevant discussions
+    if (opportunityScore < 35) return;
 
     const engagementSuggestion = await this.generateEngagementSuggestion(post, matchedKeywords);
 

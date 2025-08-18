@@ -253,7 +253,7 @@ export class SeoOrchestratorService {
         this.logger.log(`🆕 Found ${newRedditOpportunities.length} NEW Mobula-relevant Reddit opportunities`);
         
         let savedCount = 0;
-        // Save only NEW opportunities to Notion 
+        // Save ALL NEW opportunities to Notion (comprehensive coverage)
         for (const opportunity of newRedditOpportunities) {
           try {
             await this.notionService.createOpportunity({
