@@ -125,20 +125,7 @@ export class NotionService {
               ],
             },
           },
-          {
-            object: 'block',
-            type: 'paragraph',
-            paragraph: {
-              rich_text: [
-                {
-                  type: 'text',
-                  text: {
-                    content: opportunity.content.substring(0, 1900) + (opportunity.content.length > 1900 ? '... [Truncated - Full content available in page]' : ''),
-                  },
-                },
-              ],
-            },
-          },
+          ...this.createContentBlocks(opportunity.content),
         ],
       });
 
@@ -449,6 +436,74 @@ export class NotionService {
     // Extract post ID from Reddit URLs in titles or return the title as fallback
     const match = title.match(/comments\/([a-zA-Z0-9]+)/);
     return match ? match[1] : title;
+  }
+
+  private createContentBlocks(content: string): any[] {
+    const blocks: any[] = [];
+    const maxCharsPerBlock = 1900; // Notion's limit per text block
+    
+    if (content.length <= maxCharsPerBlock) {
+      // Content fits in one block
+      blocks.push({
+        object: 'block',
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [
+            {
+              type: 'text',
+              text: {
+                content: content,
+              },
+            },
+          ],
+        },
+      });
+    } else {
+      // Split content into multiple blocks
+      let remainingContent = content;
+      let blockNumber = 1;
+      
+      while (remainingContent.length > 0) {
+        let chunkEnd = Math.min(maxCharsPerBlock, remainingContent.length);
+        
+        // Try to break at a natural point (paragraph, sentence, or word boundary)
+        if (chunkEnd < remainingContent.length) {
+          const lastNewline = remainingContent.lastIndexOf('\n', chunkEnd);
+          const lastPeriod = remainingContent.lastIndexOf('. ', chunkEnd);
+          const lastSpace = remainingContent.lastIndexOf(' ', chunkEnd);
+          
+          if (lastNewline > chunkEnd - 200) {
+            chunkEnd = lastNewline + 1;
+          } else if (lastPeriod > chunkEnd - 200) {
+            chunkEnd = lastPeriod + 2;
+          } else if (lastSpace > chunkEnd - 100) {
+            chunkEnd = lastSpace + 1;
+          }
+        }
+        
+        const chunk = remainingContent.substring(0, chunkEnd).trim();
+        
+        blocks.push({
+          object: 'block',
+          type: 'paragraph',
+          paragraph: {
+            rich_text: [
+              {
+                type: 'text',
+                text: {
+                  content: chunk,
+                },
+              },
+            ],
+          },
+        });
+        
+        remainingContent = remainingContent.substring(chunkEnd).trim();
+        blockNumber++;
+      }
+    }
+    
+    return blocks;
   }
 
   private sleep(ms: number): Promise<void> {

@@ -24,6 +24,11 @@ export interface ExecutionMetrics {
 @Injectable()
 export class SeoOrchestratorService {
   private readonly logger = new Logger(SeoOrchestratorService.name);
+  
+  // CURRENT STRATEGY: 
+  // - PRIMARY FOCUS: Reddit engagement (2x daily scans)
+  // - SECONDARY: Blog outreach discovery (daily scans for mention opportunities)
+  // - BLOG CONTENT: Mondays & Fridays only at 9 AM (max 2 pieces)
   private isExecuting = false;
   private executionCount = 0;
   private readonly processedOpportunities = new Map<string, Date>(); // Track with timestamp
@@ -81,8 +86,8 @@ export class SeoOrchestratorService {
     this.loadProcessedOpportunities();
   }
 
-  // Main execution loop - runs twice per week
-  @Cron('0 9 * * 1,4', { timeZone: 'America/New_York' }) // Monday and Thursday at 9 AM EST
+  // Main execution loop - Blog content generation on Mondays and Fridays only
+  @Cron('0 9 * * 1,5', { timeZone: 'America/New_York' }) // Monday and Friday at 9 AM EST
   async executeContentGeneration(): Promise<void> {
     if (this.isExecuting) {
       this.logger.log('Content generation already in progress, skipping...');
@@ -102,7 +107,7 @@ export class SeoOrchestratorService {
       errors: 0,
     };
 
-    this.logger.log(`🚀 Starting SEO execution cycle #${this.executionCount}`);
+    this.logger.log(`🚀 Starting blog content generation cycle #${this.executionCount} (Mondays & Fridays only)`);
 
     try {
       // Step 1: Identify high-impact opportunities
@@ -112,8 +117,8 @@ export class SeoOrchestratorService {
 
       this.logger.log(`Found ${opportunities.length} opportunities, ${metrics.highPriorityOpportunities} high-priority`);
 
-      // Step 2: Execute on top 3-5 opportunities
-      const topOpportunities = opportunities.slice(0, 5);
+      // Step 2: Execute on top 1-2 opportunities (REDUCED - focusing on Reddit)
+      const topOpportunities = opportunities.slice(0, 2); // Reduced from 5 to 2
       let totalQualityScore = 0;
 
       for (const opportunity of topOpportunities) {
@@ -311,8 +316,8 @@ ${opportunity.suggestedResponse}
     }
   }
 
-  // Blog opportunity discovery - DISABLED (focusing only on Reddit)
-  // @Cron('0 10 * * *')
+  // Blog opportunity discovery - DAILY OUTREACH SCANNING (find opportunities for mentions)
+  @Cron('0 10 * * *', { timeZone: 'America/New_York' }) // Daily at 10 AM EST
   async scanBlogOpportunities(): Promise<void> {
     this.logger.log('🔍 Scanning for blog outreach opportunities...');
 
@@ -322,35 +327,43 @@ ${opportunity.suggestedResponse}
       if (blogOpportunities.length > 0) {
         this.logger.log(`Found ${blogOpportunities.length} high-value blog opportunities`);
         
-        // Save top blog opportunities to Notion
-        for (const opportunity of blogOpportunities.slice(0, 3)) {
-          await this.notionService.saveGeneratedContent(
-            {
-              title: `${opportunity.type.replace('_', ' ').toUpperCase()}: ${opportunity.title}`,
-              content: opportunity.suggestedPitch,
-              targetKeywords: opportunity.relevanceKeywords,
-              qualityScore: opportunity.opportunityScore,
-              wordCount: Math.round(opportunity.suggestedPitch.length / 5),
-              metaDescription: `Blog outreach opportunity: ${opportunity.description.substring(0, 120)}...`,
-              tags: ['outreach', opportunity.type, ...opportunity.relevanceKeywords],
-            },
-            'outreach_email',
-            opportunity.opportunityScore,
-            {
-              url: opportunity.url,
-              domain: opportunity.domain,
-              opportunityType: opportunity.type,
-              contactInfo: opportunity.contactInfo,
-              contentGap: opportunity.contentGap,
-            }
-          );
+        // Save top blog opportunities to Notion (OUTREACH ONLY - no content generation)
+        for (const opportunity of blogOpportunities.slice(0, 5)) {
+          await this.notionService.createOpportunity({
+            type: 'outreach_email',
+            title: `🎯 OUTREACH: ${opportunity.type.replace('_', ' ').toUpperCase()} - ${opportunity.title}`,
+            content: `**BLOG OUTREACH OPPORTUNITY**
+
+**Domain:** ${opportunity.domain}
+**URL:** ${opportunity.url}
+**Type:** ${opportunity.type}
+**Opportunity Score:** ${opportunity.opportunityScore}/100
+
+**Description:** ${opportunity.description}
+
+**Content Gap Identified:** ${opportunity.contentGap}
+
+**Suggested Approach:** ${opportunity.suggestedPitch}
+
+**Contact Information:** ${opportunity.contactInfo || 'Research needed'}
+
+---
+
+**📝 ACTION:** Review this outreach opportunity and craft a personalized pitch to get Mobula mentioned or featured on this blog. Focus on providing value to their audience.`,
+            priorityScore: opportunity.opportunityScore,
+            status: 'identified',
+            targetKeywords: opportunity.relevanceKeywords,
+            competitionDifficulty: 40,
+            trafficPotential: opportunity.opportunityScore * 5,
+            generatedAt: new Date(),
+          });
         }
 
-        // Notify Slack of blog opportunities
+        // Notify Slack of blog outreach opportunities (not content generation)
         await this.slackService.sendOpportunitiesFoundAlert({
           count: blogOpportunities.length,
-          topOpportunity: blogOpportunities[0].title,
-          averageScore: blogOpportunities.reduce((sum, opp) => sum + opp.opportunityScore, 0) / blogOpportunities.length,
+          topOpportunity: `OUTREACH: ${blogOpportunities[0].title}`,
+          averageScore: Math.round(blogOpportunities.reduce((sum, opp) => sum + opp.opportunityScore, 0) / blogOpportunities.length),
         });
       }
     } catch (error) {

@@ -120,7 +120,13 @@ GUIDELINES TO FOLLOW:
 ## Community Fit for r/${context.subreddit}
 ${this.getSubredditGuidelines(context.subreddit)}
 
-TASK: Generate a natural, helpful Reddit response that follows these guidelines exactly. Make it sound like a developer sharing experience, not marketing copy.
+## Response Requirements
+- **LENGTH**: 150-250 words maximum (be concise!)
+- **STRUCTURE**: 2-3 short paragraphs max
+- **FOCUS**: Only 2-3 API recommendations, don't list everything
+- **TONE**: Quick, helpful developer sharing experience
+
+TASK: Generate a SHORT, natural Reddit response that follows these guidelines exactly. Keep it conversational and concise - no lengthy explanations or comprehensive lists.
 `;
   }
 
@@ -141,19 +147,26 @@ TASK: Generate a natural, helpful Reddit response that follows these guidelines 
   }
 
   private parseRedditResponse(content: string, context: RedditPostContext): RedditResponse {
+    // Clean content of any truncation messages or artifacts
+    let cleanContent = content
+      .replace(/\[Truncated.*?\]/gi, '')
+      .replace(/\[Full content.*?\]/gi, '')
+      .replace(/\.\.\.\s*$/g, '')
+      .trim();
+
     // Determine the most relevant Mobula link based on keywords
     const mobulaLink = this.selectMobulaLink(context.keywords, context.subreddit);
     
     // Extract follow-up question if present
-    const lines = content.split('\n');
+    const lines = cleanContent.split('\n');
     const lastLine = lines[lines.length - 1];
     const followUpQuestion = lastLine.includes('?') ? lastLine.trim() : undefined;
 
     // Determine tone based on content analysis
-    const tone = this.analyzeTone(content);
+    const tone = this.analyzeTone(cleanContent);
 
     return {
-      response: content.trim(),
+      response: cleanContent,
       tone,
       keywordsFocused: context.keywords,
       mobulaLink,
