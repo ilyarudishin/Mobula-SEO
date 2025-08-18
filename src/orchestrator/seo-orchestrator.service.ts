@@ -26,9 +26,10 @@ export class SeoOrchestratorService {
   private readonly logger = new Logger(SeoOrchestratorService.name);
   
   // CURRENT STRATEGY: 
-  // - PRIMARY FOCUS: Reddit engagement (daily comprehensive scans)
-  // - SECONDARY: Blog outreach discovery (daily scans for mention opportunities)
-  // - BLOG CONTENT: Mondays & Fridays only at 9 AM (max 2 pieces)
+  // - REDDIT ONLY: Daily comprehensive scans at 8 AM EST
+  // - NO BLOG CONTENT GENERATION (disabled to stop spam)
+  // - NO BLOG OUTREACH (disabled to stop spam)
+  // - FOCUS: Find and respond to Reddit opportunities only
   private isExecuting = false;
   private executionCount = 0;
   private readonly processedOpportunities = new Map<string, Date>(); // Track with timestamp
@@ -86,8 +87,8 @@ export class SeoOrchestratorService {
     this.loadProcessedOpportunities();
   }
 
-  // Main execution loop - Blog content generation on Mondays and Fridays only
-  @Cron('0 9 * * 1,5', { timeZone: 'America/New_York' }) // Monday and Friday at 9 AM EST
+  // Blog content generation - DISABLED (Reddit focus only)
+  // @Cron('0 9 * * 1,5', { timeZone: 'America/New_York' }) // DISABLED
   async executeContentGeneration(): Promise<void> {
     if (this.isExecuting) {
       this.logger.log('Content generation already in progress, skipping...');
@@ -182,8 +183,8 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Continuous monitoring loop - runs every 4 hours
-  @Cron('0 */4 * * *', { timeZone: 'America/New_York' })
+  // Continuous monitoring - DISABLED (Reddit focus only)
+  // @Cron('0 */4 * * *', { timeZone: 'America/New_York' }) // DISABLED
   async continuousMonitoring(): Promise<void> {
     this.logger.log('🔍 Running continuous monitoring cycle');
 
@@ -316,8 +317,8 @@ ${opportunity.suggestedResponse}
     }
   }
 
-  // Blog opportunity discovery - DAILY OUTREACH SCANNING (find opportunities for mentions)
-  @Cron('0 10 * * *', { timeZone: 'America/New_York' }) // Daily at 10 AM EST
+  // Blog outreach discovery - DISABLED (Reddit focus only)  
+  // @Cron('0 10 * * *', { timeZone: 'America/New_York' }) // DISABLED
   async scanBlogOpportunities(): Promise<void> {
     this.logger.log('🔍 Scanning for blog outreach opportunities...');
 
