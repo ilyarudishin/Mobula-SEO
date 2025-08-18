@@ -26,7 +26,7 @@ export class SeoOrchestratorService {
   private readonly logger = new Logger(SeoOrchestratorService.name);
   
   // CURRENT STRATEGY: 
-  // - PRIMARY FOCUS: Reddit engagement (2x daily scans)
+  // - PRIMARY FOCUS: Reddit engagement (daily comprehensive scans)
   // - SECONDARY: Blog outreach discovery (daily scans for mention opportunities)
   // - BLOG CONTENT: Mondays & Fridays only at 9 AM (max 2 pieces)
   private isExecuting = false;
@@ -240,10 +240,10 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Reddit discovery - runs twice daily at 8 AM and 6 PM EST for maximum coverage
-  @Cron('0 8,18 * * *', { timeZone: 'America/New_York' })
+  // Reddit discovery - runs once daily at 8 AM EST for comprehensive fresh opportunities  
+  @Cron('0 8 * * *', { timeZone: 'America/New_York' })
   async scanRedditOpportunities(): Promise<void> {
-    this.logger.log('🔍 Bi-daily Reddit scan for NEW Mobula-relevant opportunities...');
+    this.logger.log('🔍 Daily Reddit scan for NEW Mobula-relevant opportunities...');
 
     try {
       // Use getNewOpportunities to only get fresh posts (no duplicates)
