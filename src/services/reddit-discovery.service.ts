@@ -433,14 +433,8 @@ export class RedditDiscoveryService {
     const isCryptoRelated = cryptoTerms.some(term => postText.includes(term));
     if (!isCryptoRelated) return;
 
-    // Must match Mobula's services
-    const mobulaServices = [
-      'price', 'pricing', 'market data', 'crypto price', 'token price',
-      'wallet', 'portfolio', 'balance', 'transaction', 'tx history',
-      'metadata', 'token info', 'multi-chain', 'cross-chain'
-    ];
-    
-    const matchesMobula = mobulaServices.some(service => postText.includes(service));
+    // Must match Mobula's services - USE COMPREHENSIVE DOC-BASED LIST
+    const matchesMobula = this.mobulaDocServices.some(service => postText.includes(service));
     if (!matchesMobula) return;
     
     // Reject non-API requests and non-crypto terms
@@ -452,8 +446,8 @@ export class RedditDiscoveryService {
     const shouldReject = rejectTerms.some(term => postText.includes(term));
     if (shouldReject) return;
 
-    // Generate keywords and response
-    const matchedKeywords = mobulaServices.filter(service => postText.includes(service));
+    // Generate keywords and response using FULL Mobula doc services
+    const matchedKeywords = this.mobulaDocServices.filter(service => postText.includes(service));
     
     const opportunityScore = this.calculateOpportunityScore(post, matchedKeywords, config);
     // LOWERED THRESHOLD: Capture more opportunities to ensure we don't miss any relevant discussions
@@ -526,14 +520,8 @@ export class RedditDiscoveryService {
     const isCryptoRelated = cryptoTerms.some(term => postText.includes(term));
     if (!isCryptoRelated) return;
 
-    // Must match Mobula's services
-    const mobulaServices = [
-      'price', 'pricing', 'market data', 'crypto price', 'token price',
-      'wallet', 'portfolio', 'balance', 'transaction', 'tx history',
-      'metadata', 'token info', 'multi-chain', 'cross-chain'
-    ];
-    
-    const matchesMobula = mobulaServices.some(service => postText.includes(service));
+    // Must match Mobula's services - USE COMPREHENSIVE DOC-BASED LIST
+    const matchesMobula = this.mobulaDocServices.some(service => postText.includes(service));
     if (!matchesMobula) return;
     
     // Reject non-API requests and non-crypto terms
@@ -545,8 +533,8 @@ export class RedditDiscoveryService {
     const shouldReject = rejectTerms.some(term => postText.includes(term));
     if (shouldReject) return;
 
-    // Generate keywords and response
-    const matchedKeywords = mobulaServices.filter(service => postText.includes(service));
+    // Generate keywords and response using FULL Mobula doc services
+    const matchedKeywords = this.mobulaDocServices.filter(service => postText.includes(service));
     
     const opportunityScore = this.calculateOpportunityScore(post, matchedKeywords, config);
     if (opportunityScore < 40) return; // Slightly lower threshold for historical
