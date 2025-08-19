@@ -380,19 +380,12 @@ export class RedditDiscoveryService {
 
     const postText = `${post.title} ${post.selftext || ''}`.toLowerCase();
     
-    // COMPREHENSIVE FILTERING: Must be asking for API recommendations OR discussing Mobula-relevant topics
+    // STRICT FILTERING: Must be asking for API recommendations OR discussing Mobula-relevant topics
     const apiRequestPatterns = [
       'best api', 'good api', 'api recommendation', 'which api', 'what api',
       'recommend api', 'suggest api', 'need api', 'looking for api',
       'api for', 'free api', 'cheap api', 'data api', 'pricing api', 'crypto api',
-      'portfolio api', 'wallet api', 'blockchain api', 'web3 api', 'market data',
-      // EXPANDED: Catch RPC, gateway, provider posts (developers don't always say "API")
-      'rpc', 'rpc provider', 'rpc endpoint', 'rpc node', 'rpc service', 'rpc bandwidth',
-      'gateway', 'crypto gateway', 'blockchain gateway', 'payment gateway', 'web3 gateway',
-      'data provider', 'price provider', 'data feed', 'data source', 'data service',
-      'provider', 'service provider', 'infrastructure', 'blockchain infrastructure',
-      'indexer', 'blockchain indexer', 'data indexing', 'query service',
-      'real-time data', 'live data', 'streaming data', 'websocket', 'webhook'
+      'portfolio api', 'wallet api', 'blockchain api', 'web3 api', 'market data'
     ];
     
     const hasApiRequest = apiRequestPatterns.some(pattern => postText.includes(pattern));
@@ -401,12 +394,7 @@ export class RedditDiscoveryService {
     const mobulaServiceDiscussion = [
       'price data', 'market data', 'crypto prices', 'token prices', 'portfolio tracking',
       'wallet tracking', 'multi-chain', 'cross-chain', 'real-time data', 'websocket',
-      'coingecko alternative', 'moralis alternative', 'alchemy alternative',
-      // EXPANDED: More ways developers talk about blockchain data needs
-      'blockchain data', 'on-chain data', 'transaction data', 'wallet data',
-      'token information', 'asset information', 'price feed', 'market feed',
-      'historical prices', 'price history', 'price tracking', 'portfolio data',
-      'defi data', 'nft data', 'token metadata', 'smart contract data'
+      'coingecko alternative', 'moralis alternative', 'alchemy alternative'
     ];
     
     const hasServiceDiscussion = mobulaServiceDiscussion.some(service => postText.includes(service));
@@ -506,13 +494,7 @@ export class RedditDiscoveryService {
     const apiRequestPatterns = [
       'best api', 'good api', 'api recommendation', 'which api', 'what api',
       'recommend api', 'suggest api', 'need api', 'looking for api',
-      'api for', 'free api', 'cheap api', 'data api', 'pricing api', 'crypto api',
-      // EXPANDED: Catch RPC, gateway, provider posts (same as regular scan)
-      'rpc', 'rpc provider', 'rpc endpoint', 'rpc node', 'rpc service', 'rpc bandwidth',
-      'gateway', 'crypto gateway', 'blockchain gateway', 'payment gateway', 'web3 gateway',
-      'data provider', 'price provider', 'data feed', 'data source', 'data service',
-      'provider', 'service provider', 'infrastructure', 'blockchain infrastructure',
-      'indexer', 'blockchain indexer', 'data indexing', 'query service'
+      'api for', 'free api', 'cheap api'
     ];
     
     const hasApiRequest = apiRequestPatterns.some(pattern => postText.includes(pattern));
