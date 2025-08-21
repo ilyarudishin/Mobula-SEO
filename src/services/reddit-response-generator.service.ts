@@ -150,7 +150,9 @@ TASK: Write a SUPER CASUAL, short Reddit comment that sounds like a real develop
       'ethdev': 'Super technical, they\'ll call out BS immediately, be genuine',
       'web3': 'Building real stuff, focus on practical dev problems not hype',
       'programming': 'General dev community, need to explain crypto context casually',
-      'cryptodevs': 'Fellow crypto devs, they get the pain points, be real about challenges'
+      'cryptodevs': 'Fellow crypto devs, they get the pain points, be real about challenges',
+      'solidity': 'Smart contract devs who need reliable data feeds, focus on oracle and metadata use cases',
+      'cryptotechnology': 'Technical discussions about blockchain tech, keep responses technically accurate'
     };
 
     return guidelines[subreddit.toLowerCase()] || 'Dev community, keep it real and helpful';

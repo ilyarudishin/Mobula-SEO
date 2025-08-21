@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '../config/config.service';
-import { OpenAIService } from './openai.service';
+import { RedditResponseGeneratorService } from './reddit-response-generator.service';
 import axios from 'axios';
 
 export interface RedditOpportunity {
@@ -104,6 +104,12 @@ export class RedditDiscoveryService {
       keywords: ['crypto api', 'blockchain api', 'web3 api', 'token data', 'wallet data', 'market data'],
       maxPostsPerScan: 20,
       minScore: 3,
+    },
+    {
+      name: 'solidity',
+      keywords: ['api', 'data', 'price', 'market', 'wallet', 'token', 'contract', 'blockchain', 'ethereum', 'web3', 'dapp', 'oracle', 'metadata'],
+      maxPostsPerScan: 30,
+      minScore: 1,
     }
   ];
 
@@ -222,7 +228,7 @@ export class RedditDiscoveryService {
 
   constructor(
     private configService: ConfigService,
-    private openaiService: OpenAIService,
+    private redditResponseGenerator: RedditResponseGeneratorService,
   ) {
     this.logger.log('Reddit Discovery Service initialized - using web scraping for monitoring only');
   }
@@ -613,48 +619,20 @@ export class RedditDiscoveryService {
   }
 
   private async generateEngagementSuggestion(post: any, keywords: string[]): Promise<string> {
-    const prompt = `REDDIT ENGAGEMENT ANALYSIS - Manual Review Required
-
-POST DETAILS:
-Title: "${post.title}"
-Content: "${post.selftext || 'No additional content'}"
-Keywords: ${keywords.join(', ')}
-Subreddit: r/${post.subreddit}
-
-ENGAGEMENT STRATEGY SUGGESTION:
-
-1. PROBLEM IDENTIFICATION:
-   [What specific problem/question is the user asking?]
-
-2. RESPONSE APPROACH:
-   [How should someone from Mobula manually respond?]
-
-3. VALUE-FIRST CONTENT:
-   [What helpful information should be provided first?]
-
-4. TECHNICAL DETAILS:
-   [Code examples, resources, or technical advice to include]
-
-5. MOBULA INTEGRATION (if relevant):
-   [How to naturally mention Mobula as one solution among others]
-
-6. ENGAGEMENT TYPE:
-   [Help request / Comparison question / Technical tutorial / Resource request]
-
-Format as actionable manual engagement guide following Mobula's authentic community engagement principles.`;
-
     try {
-      const response = await this.openaiService.generateContent({
-        type: 'reddit_response',
-        topic: post.title,
+      const context = {
+        postTitle: post.title,
+        postContent: post.selftext || '',
+        subreddit: post.subreddit,
+        author: post.author,
+        url: `https://reddit.com/r/${post.subreddit}/comments/${post.id}`,
         keywords: keywords,
-        targetAudience: 'developers',
-        additionalContext: prompt,
-      });
+      };
 
-      return response.content;
+      const response = await this.redditResponseGenerator.generateResponse(context);
+      return response.response;
     } catch (error) {
-      this.logger.error(`Failed to generate engagement suggestion with OpenAI: ${error.message}`);
+      this.logger.error(`Failed to generate casual Reddit response: ${error.message}`);
       return `MANUAL ENGAGEMENT OPPORTUNITY: User asking about ${keywords.join(', ')} - consider offering helpful technical advice about Mobula's blockchain API services. Focus on being genuinely helpful rather than promotional.`;
     }
   }

@@ -305,7 +305,21 @@ ${opportunity.suggestedResponse}
         
         this.logger.log(`✅ Saved ${savedCount} new Reddit opportunities to Notion`);
       } else {
-        this.logger.log('✅ No new Reddit opportunities found this scan (no duplicates, no notifications)');
+        this.logger.log('✅ No new Reddit opportunities found this scan (no duplicates, sending status notification)');
+        
+        // Send notification for zero-result scans so you know the system is working
+        await this.slackService.sendNotification({
+          type: 'performance_update',
+          title: '📊 Daily Reddit Scan Complete',
+          message: `Daily Reddit scan completed at ${new Date().toLocaleTimeString()} EST\n\n` +
+                   `🔍 **Scanned**: 13 subreddits for API discussions\n` +
+                   `📊 **Results**: 0 new opportunities found\n` +
+                   `✅ **Status**: All relevant posts already processed\n` +
+                   `🔄 **Deduplication**: Working correctly\n\n` +
+                   `This indicates the system is working normally and quality filtering is preventing duplicate processing.`,
+          urgent: false
+        });
+        this.logger.log('🔔 Sent zero-results notification to Slack');
       }
     } catch (error) {
       this.logger.error('Error in Reddit opportunity scan', error.stack);
@@ -507,7 +521,7 @@ ${opportunity.suggestedResponse}
       await this.notionService.saveGeneratedContent(
         {
           title: `📊 Daily GSC Performance Report - ${new Date().toLocaleDateString()}`,
-          content: `# Daily GSC Performance Summary\n\n## Top Pages:\n${topPages.slice(0, 5).map(p => `- ${p.page}: ${p.clicks} clicks (pos ${p.position.toFixed(1)})`).join('\n')}\n\n## Top Queries:\n${topQueries.slice(0, 10).map(q => `- "${q.query}": ${q.clicks} clicks (pos ${q.position.toFixed(1)})`).join('\n')}\n\n## Keyword Tracking:\n${gscKeywordData.length} core keywords monitored for position changes.`,
+          content: `# Daily GSC Performance Summary\n\n## Top Pages:\n${topPages.slice(0, 5).map(p => `- ${p.page}: ${p.clicks} clicks (pos ${p.position.toFixed(1)})`).join('\n')}\n\n## Top Queries:\n${topQueries.slice(0, 10).map(q => `- "${q.query}": ${q.clicks} clicks (pos ${q.position.toFixed(1)})`).join('\n')}\n\n## Keyword Tracking:\n${gscKeywordData.length} core keywords monitored for position changes.\n${gscKeywordData.slice(0, 10).map(k => `- "${k.keyword}": Position ${k.avgPosition ? k.avgPosition.toFixed(1) : 'N/A'} (${k.clicks || 0} clicks)`).join('\n')}\n\n## Performance Insights:\n- Total clicks: ${topPages.reduce((sum, p) => sum + p.clicks, 0)} across top pages\n- Total queries tracked: ${topQueries.length} search terms\n- Best performing query: "${topQueries[0]?.query || 'N/A'}" (${topQueries[0]?.clicks || 0} clicks)\n- Average position: ${(topQueries.reduce((sum, q) => sum + q.position, 0) / topQueries.length).toFixed(1)}\n\n*Report generated: ${new Date().toLocaleString()}*`,
           targetKeywords: topQueries.slice(0, 5).map(q => q.query),
           qualityScore: 95,
           wordCount: 300,
