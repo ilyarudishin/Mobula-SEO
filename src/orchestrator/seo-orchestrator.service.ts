@@ -26,10 +26,10 @@ export class SeoOrchestratorService {
   private readonly logger = new Logger(SeoOrchestratorService.name);
   
   // CURRENT STRATEGY: 
-  // - REDDIT ONLY: Daily comprehensive scans at 8 AM EST
-  // - NO BLOG CONTENT GENERATION (disabled to stop spam)
+  // - REDDIT: Daily comprehensive scans at 8 AM EST for engagement opportunities
+  // - CONTENT GENERATION: Thursdays 9 AM EST using DataForSEO/SerpAPI keyword opportunities  
   // - NO BLOG OUTREACH (disabled to stop spam)
-  // - FOCUS: Find and respond to Reddit opportunities only
+  // - FOCUS: Reddit engagement + SEO content based on data-driven keyword research
   private isExecuting = false;
   private executionCount = 0;
   private readonly processedOpportunities = new Map<string, Date>(); // Track with timestamp
@@ -87,8 +87,8 @@ export class SeoOrchestratorService {
     this.loadProcessedOpportunities();
   }
 
-  // Blog content generation - DISABLED (Reddit focus only)
-  // @Cron('0 9 * * 1,5', { timeZone: 'America/New_York' }) // DISABLED
+  // Blog content generation - ENABLED Thursdays only based on SEO keyword opportunities
+  @Cron('0 9 * * 4', { timeZone: 'America/New_York' }) // Thursdays at 9 AM EST
   async executeContentGeneration(): Promise<void> {
     if (this.isExecuting) {
       this.logger.log('Content generation already in progress, skipping...');
@@ -108,7 +108,7 @@ export class SeoOrchestratorService {
       errors: 0,
     };
 
-    this.logger.log(`🚀 Starting blog content generation cycle #${this.executionCount} (Mondays & Fridays only)`);
+    this.logger.log(`🚀 Starting blog content generation cycle #${this.executionCount} (Thursdays only - SEO keyword-driven)`);
 
     try {
       // Step 1: Identify high-impact opportunities
@@ -118,8 +118,8 @@ export class SeoOrchestratorService {
 
       this.logger.log(`Found ${opportunities.length} opportunities, ${metrics.highPriorityOpportunities} high-priority`);
 
-      // Step 2: Execute on top 1-2 opportunities (REDUCED - focusing on Reddit)
-      const topOpportunities = opportunities.slice(0, 2); // Reduced from 5 to 2
+      // Step 2: Execute on top 2-3 SEO opportunities (Thursday content generation)
+      const topOpportunities = opportunities.slice(0, 3); // Focus on quality over quantity
       let totalQualityScore = 0;
 
       for (const opportunity of topOpportunities) {
@@ -580,20 +580,36 @@ ${opportunity.suggestedResponse}
   }
 
   private async identifyOpportunities(): Promise<KeywordOpportunity[]> {
-    this.logger.log('🔍 Identifying content opportunities...');
+    this.logger.log('🔍 Identifying content opportunities using DataForSEO and SerpAPI...');
 
     // Combine core keywords with competitor-based keywords
     const allKeywords = [...this.coreKeywords, ...this.competitorKeywords];
     
-    // Find opportunities using SERP analysis
+    // Find opportunities using SERP analysis (DataForSEO + SerpAPI)
     const opportunities = await this.serpService.findContentOpportunities(allKeywords);
     
-    // Filter and prioritize
+    // Enhanced filtering for Thursday content generation
     const filteredOpportunities = opportunities
-      .filter(opp => opp.opportunityScore > 60)
+      .filter(opp => {
+        // Higher threshold for content generation (save resources)
+        if (opp.opportunityScore < 70) return false;
+        
+        // Prioritize keywords with clear search intent
+        if (!opp.intent || opp.intent === 'navigational') return false;
+        
+        // Focus on keywords with decent search volume
+        if (opp.searchVolume < 500) return false;
+        
+        return true;
+      })
       .sort((a, b) => b.opportunityScore - a.opportunityScore);
 
-    this.logger.log(`Identified ${filteredOpportunities.length} viable opportunities`);
+    this.logger.log(`📊 SEO Analysis Results: ${opportunities.length} total opportunities, ${filteredOpportunities.length} viable for content generation`);
+    
+    if (filteredOpportunities.length > 0) {
+      const topKeywords = filteredOpportunities.slice(0, 3).map(o => o.keyword);
+      this.logger.log(`🎯 Top opportunities: ${topKeywords.join(', ')}`);
+    }
     
     return filteredOpportunities;
   }
@@ -867,16 +883,14 @@ ${opportunity.suggestedResponse}
   }
 
   private getNextExecutionTime(): string {
-    // Calculate next Monday or Thursday at 9 AM
+    // Calculate next Thursday at 9 AM EST
     const now = new Date();
     const nextExecution = new Date(now);
     
-    if (now.getDay() <= 1) { // Before Monday
-      nextExecution.setDate(now.getDate() + (1 - now.getDay()));
-    } else if (now.getDay() <= 4) { // Before Thursday
+    if (now.getDay() <= 4) { // Before or on Thursday
       nextExecution.setDate(now.getDate() + (4 - now.getDay()));
-    } else { // After Thursday, next Monday
-      nextExecution.setDate(now.getDate() + (8 - now.getDay()));
+    } else { // After Thursday, next Thursday
+      nextExecution.setDate(now.getDate() + (11 - now.getDay()));
     }
     
     nextExecution.setHours(9, 0, 0, 0);
