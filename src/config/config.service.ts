@@ -30,6 +30,7 @@ export interface ApiConfig {
     clientSecret: string;
     username: string;
     password: string;
+    userAgent: string;
   };
   database: {
     host: string;
@@ -84,6 +85,7 @@ export class ConfigService {
         clientSecret: this.nestConfigService.get<string>('REDDIT_CLIENT_SECRET', ''),
         username: this.nestConfigService.get<string>('REDDIT_USERNAME', ''),
         password: this.nestConfigService.get<string>('REDDIT_PASSWORD', ''),
+        userAgent: this.nestConfigService.get<string>('REDDIT_USER_AGENT', 'MobulaAPI:SEOMonitor:v1.0.0'),
       },
       database: {
         host: this.nestConfigService.get<string>('DATABASE_HOST', 'localhost'),

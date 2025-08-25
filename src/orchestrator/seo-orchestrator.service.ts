@@ -305,29 +305,12 @@ ${opportunity.suggestedResponse}
         
         this.logger.log(`✅ Saved ${savedCount} new Reddit opportunities to Notion`);
       } else {
-        this.logger.log('✅ No new Reddit opportunities found this scan (no duplicates, sending status notification)');
-        
-        // Send notification for zero-result scans so you know the system is working
-        await this.slackService.sendNotification({
-          type: 'performance_update',
-          title: '📊 Daily Reddit Scan Complete',
-          message: `Daily Reddit scan completed at ${new Date().toLocaleTimeString()} EST\n\n` +
-                   `🔍 **Scanned**: 13 subreddits for API discussions\n` +
-                   `📊 **Results**: 0 new opportunities found\n` +
-                   `✅ **Status**: All relevant posts already processed\n` +
-                   `🔄 **Deduplication**: Working correctly\n\n` +
-                   `This indicates the system is working normally and quality filtering is preventing duplicate processing.`,
-          urgent: false
-        });
-        this.logger.log('🔔 Sent zero-results notification to Slack');
+        this.logger.log('✅ No new Reddit opportunities found this scan (no duplicates)');
+        // Slack notifications disabled - no spam for normal operation
       }
     } catch (error) {
       this.logger.error('Error in Reddit opportunity scan', error.stack);
-      await this.slackService.sendErrorAlert({
-        type: 'reddit_scan_error',
-        message: error.message,
-        service: 'Reddit Discovery Service',
-      });
+      // Slack error alerts disabled - check logs instead
     }
   }
 
