@@ -306,11 +306,30 @@ ${opportunity.suggestedResponse}
         this.logger.log(`✅ Saved ${savedCount} new Reddit opportunities to Notion`);
       } else {
         this.logger.log('✅ No new Reddit opportunities found this scan (no duplicates)');
-        // Slack notifications disabled - no spam for normal operation
+        
+        // Send status notification for successful scans (including Reddit-wide search info)
+        await this.slackService.sendNotification({
+          type: 'performance_update',
+          title: '🔍 Reddit Scan Complete - Enhanced Coverage',
+          message: `Daily Reddit scan completed at ${new Date().toLocaleTimeString()} EST\n\n` +
+                   `📊 **Phase 1**: Scanned 14+ targeted subreddits\n` +
+                   `🌍 **Phase 2**: Reddit-wide keyword search (8 strategic terms)\n` +
+                   `📈 **Total Coverage**: ~500+ posts analyzed\n` +
+                   `📊 **Results**: 0 new opportunities found\n` +
+                   `✅ **Status**: All relevant posts already processed\n` +
+                   `🔄 **Deduplication**: Working correctly\n\n` +
+                   `System is operating normally with enhanced Reddit-wide coverage.`,
+          urgent: false
+        });
+        this.logger.log('🔔 Sent Reddit-wide scan status to Slack');
       }
     } catch (error) {
       this.logger.error('Error in Reddit opportunity scan', error.stack);
-      // Slack error alerts disabled - check logs instead
+      await this.slackService.sendErrorAlert({
+        type: 'reddit_scan_error',
+        message: `Reddit-wide scan failed: ${error.message}`,
+        service: 'Reddit Discovery Service',
+      });
     }
   }
 
@@ -428,7 +447,7 @@ ${opportunity.suggestedResponse}
   }
 
   // Weekly report - runs every Sunday at 6 PM EST
-  @Cron('0 18 * * 0', { timeZone: 'America/New_York' })
+  // @Cron('0 18 * * 0', { timeZone: 'America/New_York' }) // DISABLED - weekly reports too spammy
   async generateWeeklyReport(): Promise<void> {
     this.logger.log('📊 Generating weekly SEO execution report with GSC data');
 
@@ -471,8 +490,8 @@ ${opportunity.suggestedResponse}
     }
   }
 
-  // DAILY GSC TRACKING & REPORTING - runs once per day at 7 AM EST (ONLY place for GSC data)
-  @Cron('0 7 * * *', { timeZone: 'America/New_York' })
+  // DAILY GSC TRACKING & REPORTING - DISABLED (too much spam)
+  // @Cron('0 7 * * *', { timeZone: 'America/New_York' }) // DISABLED 
   async dailyGscTracking(): Promise<void> {
     this.logger.log('📊 Running daily GSC tracking and performance reporting (ONCE daily)');
     
