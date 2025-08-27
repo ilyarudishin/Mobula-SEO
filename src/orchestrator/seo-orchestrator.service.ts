@@ -490,8 +490,8 @@ ${opportunity.suggestedResponse}
     }
   }
 
-  // DAILY GSC TRACKING & REPORTING - DISABLED (too much spam)
-  // @Cron('0 7 * * *', { timeZone: 'America/New_York' }) // DISABLED 
+  // DAILY GSC TRACKING & REPORTING - runs once per day at 7 AM EST (single GSC report)
+  @Cron('0 7 * * *', { timeZone: 'America/New_York' })
   async dailyGscTracking(): Promise<void> {
     this.logger.log('📊 Running daily GSC tracking and performance reporting (ONCE daily)');
     
