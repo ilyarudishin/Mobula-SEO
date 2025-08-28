@@ -87,8 +87,8 @@ export class SeoOrchestratorService {
     this.loadProcessedOpportunities();
   }
 
-  // Blog content generation - ENABLED Thursdays only based on SEO keyword opportunities
-  @Cron('0 9 * * 4', { timeZone: 'America/New_York' }) // Thursdays at 9 AM EST
+  // Blog content generation - DISABLED (SerpAPI key invalid, causing error spam)
+  // @Cron('0 9 * * 4', { timeZone: 'America/New_York' }) // DISABLED - SerpAPI 401 errors
   async executeContentGeneration(): Promise<void> {
     if (this.isExecuting) {
       this.logger.log('Content generation already in progress, skipping...');
