@@ -239,3 +239,37 @@ MIT License - Build something amazing!
 ---
 
 **Remember: This agent is a DOER, not a SUGGESTER. It should spend 90% of its time CREATING content and 10% deciding what to create next.**
+
+---
+
+## 🎯 Weekly Blog Opportunity Scanner
+
+### Overview
+Automated scanner that finds blog articles where Mobula should be mentioned. Runs **every Tuesday at 9:00 AM UTC** via GitHub Actions.
+
+### What It Finds
+- Competitor alternative discussions (CoinMarketCap, Moralis alternatives)  
+- Crypto API comparisons and rankings
+- Wallet analytics & portfolio tracking articles
+- Solana trading bot tutorials
+- Real-time crypto data discussions
+- Multi-chain API development content
+
+### Usage
+```bash
+# Manual run
+npm run weekly-scan
+
+# Automated: Runs every Tuesday at 9 AM UTC via GitHub Actions
+```
+
+### Results
+- Saved to Notion with `WEEK-YYYY-MM-DD:` prefix
+- Only saves opportunities scoring 75+ (high relevance)
+- Includes action plans and target keywords
+- Top 15 opportunities per week to avoid noise
+
+### Setup for Weekly Automation
+1. Add GitHub secrets: `NOTION_API_KEY`, `NOTION_DATABASE_ID`, `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`
+2. GitHub Actions workflow automatically runs every Tuesday
+3. Check Notion for new weekly opportunities

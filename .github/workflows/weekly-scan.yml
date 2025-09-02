@@ -1,0 +1,42 @@
+name: Weekly Mobula Opportunity Scan
+
+on:
+  schedule:
+    # Runs every Tuesday at 9:00 AM UTC (adjust timezone as needed)
+    - cron: '0 9 * * 2'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Run weekly opportunity scan
+      run: node weekly-mobula-opportunity-scanner.js
+      env:
+        NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+        NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+        DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
+        
+    - name: Upload scan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: weekly-scan-results
+        path: |
+          *.log
+          scan-results-*.json
+        retention-days: 30
