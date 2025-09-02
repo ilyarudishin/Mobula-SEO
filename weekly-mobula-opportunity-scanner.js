@@ -264,7 +264,7 @@ class MobulaOpportunityScanner {
           select: { name: 'Weekly Scan' }
         },
         'Target Keywords': {
-          multi_select: this.generateKeywords(opportunity).map(keyword => ({
+          multi_select: (await this.generateRealKeywords(opportunity)).map(keyword => ({
             name: keyword
           }))
         },
@@ -288,21 +288,77 @@ class MobulaOpportunityScanner {
     return response.data;
   }
 
-  generateKeywords(opportunity) {
+  async generateRealKeywords(opportunity) {
+    // Only use real keywords from SerpAPI or actual content analysis
+    try {
+      if (process.env.SERPAPI_KEY) {
+        return await this.getRealKeywordsFromAPI(opportunity.title);
+      } else {
+        // Only extract keywords that actually exist in the title
+        return this.extractVerifiedKeywords(opportunity.title);
+      }
+    } catch (error) {
+      console.log(`      ❌ Keyword generation failed: ${error.message}`);
+      return this.extractVerifiedKeywords(opportunity.title);
+    }
+  }
+
+  async getRealKeywordsFromAPI(title) {
+    const response = await axios.get('https://serpapi.com/search', {
+      params: {
+        engine: 'google',
+        q: title.toLowerCase().replace(/[^\w\s]/g, '').substring(0, 100),
+        api_key: process.env.SERPAPI_KEY,
+        num: 5
+      },
+      timeout: 15000
+    });
+
+    const results = response.data.organic_results || [];
+    const realKeywords = new Set();
+
+    results.forEach(result => {
+      const text = `${result.title} ${result.snippet}`.toLowerCase();
+      const cryptoTerms = [
+        'crypto api', 'cryptocurrency api', 'blockchain api',
+        'trading api', 'price api', 'market data',
+        'solana api', 'defi api', 'wallet api',
+        'coinmarketcap', 'coingecko', 'moralis'
+      ];
+
+      cryptoTerms.forEach(term => {
+        if (text.includes(term)) {
+          realKeywords.add(term);
+        }
+      });
+    });
+
+    return Array.from(realKeywords).slice(0, 5);
+  }
+
+  extractVerifiedKeywords(title) {
+    // Only extract if terms actually exist in title
+    const text = title.toLowerCase();
     const keywords = [];
-    const text = opportunity.title.toLowerCase();
     
-    // Add relevant keywords based on content
-    if (text.includes('api')) keywords.push('crypto api');
-    if (text.includes('solana')) keywords.push('solana api');
-    if (text.includes('trading')) keywords.push('trading bot');
-    if (text.includes('wallet')) keywords.push('wallet tracker');
-    if (text.includes('portfolio')) keywords.push('portfolio tracker');
-    if (text.includes('coinmarketcap')) keywords.push('coinmarketcap alternative');
-    if (text.includes('moralis')) keywords.push('moralis alternative');
-    if (text.includes('defi')) keywords.push('defi analytics');
+    const keywordMap = {
+      'api': 'crypto api',
+      'solana': 'solana api', 
+      'trading': 'trading api',
+      'wallet': 'wallet api',
+      'portfolio': 'portfolio tracker',
+      'coinmarketcap': 'coinmarketcap alternative',
+      'moralis': 'moralis alternative',
+      'defi': 'defi api'
+    };
     
-    return keywords.slice(0, 5);
+    Object.entries(keywordMap).forEach(([term, keyword]) => {
+      if (text.includes(term)) {
+        keywords.push(keyword);
+      }
+    });
+    
+    return keywords.slice(0, 4);
   }
 
   generateWeeklySummary(opportunities, savedCount) {
