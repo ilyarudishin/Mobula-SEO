@@ -15,6 +15,7 @@ import { RedditDiscoveryService } from './services/reddit-discovery.service';
 import { BlogDiscoveryService } from './services/blog-discovery.service';
 import { SocialListeningService } from './services/social-listening.service';
 import { RedditResponseGeneratorService } from './services/reddit-response-generator.service';
+import { WeeklyOpportunityScannerService } from './services/weekly-opportunity-scanner.service';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { RedditResponseGeneratorService } from './services/reddit-response-gener
     BlogDiscoveryService,
     SocialListeningService,
     RedditResponseGeneratorService,
+    WeeklyOpportunityScannerService,
   ],
 })
 export class AppModule {}
