@@ -183,8 +183,8 @@ export class SeoOrchestratorService {
     }
   }
 
-  // Continuous monitoring - DISABLED (Reddit focus only)
-  // @Cron('0 */4 * * *', { timeZone: 'America/New_York' }) // DISABLED
+  // Continuous monitoring - DISABLED (generating fake opportunities)
+  // @Cron('0 */4 * * *', { timeZone: 'America/New_York' }) // DISABLED - FAKE DATA
   async continuousMonitoring(): Promise<void> {
     this.logger.log('🔍 Running continuous monitoring cycle');
 
@@ -697,87 +697,20 @@ ${opportunity.suggestedResponse}
   }
 
   private async findUrgentOpportunities(): Promise<KeywordOpportunity[]> {
-    // Dynamic urgent opportunities based on time and randomization
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
-    const currentHour = new Date().getHours();
+    // DISABLED: This was generating fake "urgent opportunities" every 4 hours
+    // The real weekly scanner now handles actual opportunities on Tuesdays
     
-    // Rotate keywords based on time to avoid always finding the same ones
-    const allPossibleKeywords = [
-      `blockchain API trends ${currentYear}`,
-      'new DeFi protocols',
-      'crypto market data updates', 
-      'web3 infrastructure changes',
-      'blockchain API performance',
-      'multi-chain data providers',
-      'crypto API comparison',
-      'real-time blockchain data',
-      'wallet API integration',
-      'DeFi yield farming APIs',
-      'NFT metadata APIs',
-      'blockchain analytics tools'
-    ];
-    
-    // Select different keywords based on time to create variety
-    const keywordIndex = currentHour % allPossibleKeywords.length;
-    const selectedKeywords = [
-      allPossibleKeywords[keywordIndex],
-      allPossibleKeywords[(keywordIndex + 1) % allPossibleKeywords.length],
-      allPossibleKeywords[(keywordIndex + 2) % allPossibleKeywords.length]
-    ];
-    
-    this.logger.log(`🔍 Checking urgent opportunities for: ${selectedKeywords.join(', ')}`);
-    
-    const opportunities = await this.serpService.findContentOpportunities(selectedKeywords);
-    
-    // Higher threshold to reduce frequency and only return genuinely urgent opportunities
-    return opportunities.filter(opp => opp.opportunityScore >= 90);
+    this.logger.log('🔍 Urgent opportunities DISABLED - was generating fake data');
+    return [];
   }
 
   private async monitorCompetitors(): Promise<void> {
-    this.logger.log('👀 Monitoring competitor activity...');
+    this.logger.log('👀 Competitor monitoring DISABLED - was generating fake opportunities');
     
-    // This would integrate with competitor tracking APIs
-    // For now, we'll track their SERP positions
-    const competitorKeywords = this.competitorKeywords.slice(0, 5);
+    // DISABLED: This was creating fake "competitor response" opportunities with hardcoded 75/100 scores
+    // The real weekly scanner now handles actual competitor-related opportunities
     
-    for (const keyword of competitorKeywords) {
-      const analysis = await this.serpService.analyzeSerpForKeyword(keyword);
-      
-      // If competitors are ranking well, create counter-content
-      if (analysis.competitorPresence.length > 0 && analysis.competitorPresence[0].position <= 5) {
-        const competitor = analysis.competitorPresence[0];
-        
-        this.logger.log(`Competitor ${competitor.domain} ranking #${competitor.position} for "${keyword}"`);
-        
-        // Generate counter-content
-        const opportunity: KeywordOpportunity = {
-          keyword: `${keyword} alternative`,
-          searchVolume: 1000,
-          competition: 'medium',
-          difficulty: 70,
-          intent: 'commercial',
-          opportunityScore: 75,
-          gaps: ['Better technical explanation needed', 'More comprehensive comparison'],
-        };
-        
-        const content = await this.executeOpportunity(opportunity);
-        if (content) {
-          await this.notionService.saveGeneratedContent(
-            content,
-            'blog_article',
-            opportunity.opportunityScore,
-            { competitorResponse: true, targetCompetitor: competitor.domain }
-          );
-
-          await this.slackService.sendOpportunitiesFoundAlert({
-            count: 1,
-            topOpportunity: `${keyword} (competitor response)`,
-            averageScore: opportunity.opportunityScore,
-          });
-        }
-      }
-    }
+    return;
   }
 
 
