@@ -210,32 +210,42 @@ export class WeeklyOpportunityScannerService {
       try {
         const keywords = await this.generateRealKeywords(opp);
         
-        await this.notionService.createPage({
-          parent: {
-            database_id: this.configService.get('NOTION_DATABASE_ID')
-          },
-          properties: {
-            'Title': {
-              title: [{ text: { content: `${weekPrefix}: ${opp.title}` } }]
-            },
-            'URL': {
-              url: opp.url
-            },
-            'Priority Score': {
-              number: opp.relevanceScore
-            },
-            'Type': {
-              select: { name: 'Weekly Scan' }
-            },
-            'Target Keywords': {
-              multi_select: keywords.map(keyword => ({ name: keyword }))
-            },
-            'Status': {
-              status: { name: 'Not started' }
-            },
-            'Generated At': {
-              date: { start: new Date().toISOString().split('T')[0] }
-            }
+        await this.notionService.createOpportunity({
+          type: 'blog_article',
+          title: `${weekPrefix}: ${opp.title}`,
+          content: `**WEEKLY MOBULA OUTREACH OPPORTUNITY**
+
+**Article:** ${opp.title}
+**URL:** ${opp.url}
+**Platform:** ${opp.domain}
+**Relevance Score:** ${opp.relevanceScore}/100
+**Search Query:** ${opp.searchQuery}
+
+**Why This is Relevant to Mobula:**
+${opp.reason}
+
+**Recommended Action:**
+${opp.actionPlan}
+
+**Target Keywords:** ${keywords.join(', ')}
+
+---
+
+**📝 ACTION NEEDED:** 
+Review this article and engage with valuable insights that naturally mention Mobula's advantages. Focus on providing genuine technical value to the community.`,
+          priorityScore: opp.relevanceScore,
+          status: 'identified',
+          targetKeywords: keywords,
+          competitionDifficulty: 50, // Default medium difficulty
+          trafficPotential: Math.min(100, opp.relevanceScore * 1.2), // Estimate based on relevance
+          generatedAt: new Date(),
+          additionalData: {
+            url: opp.url,
+            domain: opp.domain,
+            searchQuery: opp.searchQuery,
+            mobulaServices: opp.mobulaServices,
+            weeklyScanner: true,
+            scanDate: new Date().toISOString().split('T')[0]
           }
         });
         
@@ -279,8 +289,8 @@ export class WeeklyOpportunityScannerService {
     const results = response.data.organic_results || [];
     const realKeywords = new Set<string>();
 
-    results.forEach(result => {
-      const text = `${result.title} ${result.snippet}`.toLowerCase();
+    results.forEach((result: any) => {
+      const text = `${result.title || ''} ${result.snippet || ''}`.toLowerCase();
       const cryptoTerms = [
         'crypto api', 'cryptocurrency api', 'blockchain api',
         'trading api', 'price api', 'market data',
@@ -288,7 +298,7 @@ export class WeeklyOpportunityScannerService {
         'coinmarketcap', 'coingecko', 'moralis'
       ];
 
-      cryptoTerms.forEach(term => {
+      cryptoTerms.forEach((term: string) => {
         if (text.includes(term)) {
           realKeywords.add(term);
         }
